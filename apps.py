@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 
 
-class ContentGeneratorTmpConfig(AppConfig):
+class ContentGeneratorConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'content_generator_tmp'
+    name = 'content_generator'
     verbose_name = 'Генератор контента'
