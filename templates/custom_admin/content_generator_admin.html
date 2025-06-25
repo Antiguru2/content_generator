@@ -1,0 +1,42 @@
+<script src='//unpkg.com/alpinejs' defer></script>
+<div x-data='сontentGeneratorBlock'>
+    <div style='display: none;'>
+        <textarea x-model='aditonalPrompt' rows='10' cols='40' style='width: 610px;' id='сontentGeneratorBlockTextarea'></textarea>
+    </div>
+    <template x-if='modelId != "None"'>
+        <a @click.prevent='clickButton(event)' id='generate_content' href='#'><input class='сontent_generator_button' type='button' value='Сгенерировать'></a>
+    </template>
+    <template x-if='modelId == "None"'>
+        <span>⚠️ Обьект не создан, генерация невозможна</span>
+    </template>   
+</div>
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('сontentGeneratorBlock', () => ({
+            aditonalPrompt: '',
+            naturalKey: '{{ self.natural_key }}',
+            modelId: '{{ self.id }}',
+            init() {
+            },
+            async clickButton(event) {
+                console.log('clickButton');
+                var url = `/content_generator/generate/?natural_key=${this.naturalKey}&model_id=${this.modelId}&additional_prompt=${this.aditonalPrompt}`
+                const response = await fetch(url);
+                console.log('url', url);
+                console.log('response', response);
+                
+                // Получаем данные из ответа
+                const response_data = await response.json();
+                const data = response_data.data;
+                
+                // Вставляем данные в textarea с именем 'text'
+                if (data.text) {
+                    const textarea = document.querySelector('textarea[name="text"]');
+                    if (textarea) {
+                        textarea.value = data.text;
+                    }
+                }
+            },
+        }));
+    });
+</script>
