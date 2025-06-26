@@ -1,10 +1,48 @@
 <script src='//unpkg.com/alpinejs' defer></script>
+<style>
+    .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .сontent_generator_button {
+        background: #007cba;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+    }
+    
+    .сontent_generator_button:hover {
+        background: #005a87;
+    }
+    
+    .сontent_generator_button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: #ccc;
+    }
+</style>
 <div x-data='сontentGeneratorBlock'>
-    <div style='display: none;'>
+    <div style="padding-bottom: 10px;">
         <textarea x-model='aditonalPrompt' rows='10' cols='40' style='width: 610px;' id='сontentGeneratorBlockTextarea'></textarea>
     </div>
     <template x-if='modelId != "None"'>
-        <a @click.prevent='clickButton(event)' id='generate_content' href='#'><input class='сontent_generator_button' type='button' value='Сгенерировать'></a>
+        <button @click.prevent='clickButton(event)' class='сontent_generator_button' :disabled='loading' x-html='buttonText'></button>
     </template>
     <template x-if='modelId == "None"'>
         <span>⚠️ Обьект не создан, генерация невозможна</span>
@@ -16,25 +54,42 @@
             aditonalPrompt: '',
             naturalKey: '{{ self.natural_key }}',
             modelId: '{{ self.id }}',
+            loading: false,
             init() {
             },
+            get buttonText() {
+                return this.loading 
+                    ? '<span class="spinner"></span>Генерируется...' 
+                    : 'Сгенерировать';
+            },
             async clickButton(event) {
+                if (this.loading) return; // Предотвращаем множественные клики
+                
                 console.log('clickButton');
-                var url = `/content_generator/generate/?natural_key=${this.naturalKey}&model_id=${this.modelId}&additional_prompt=${this.aditonalPrompt}`
-                const response = await fetch(url);
-                console.log('url', url);
-                console.log('response', response);
+                this.loading = true;
                 
-                // Получаем данные из ответа
-                const response_data = await response.json();
-                const data = response_data.data;
-                
-                // Вставляем данные в textarea с именем 'text'
-                if (data.text) {
-                    const textarea = document.querySelector('textarea[name="text"]');
-                    if (textarea) {
-                        textarea.value = data.text;
+                try {
+                    var url = `/content_generator/generate/?natural_key=${this.naturalKey}&model_id=${this.modelId}&additional_prompt=${this.aditonalPrompt}`
+                    const response = await fetch(url);
+                    console.log('url', url);
+                    console.log('response', response);
+                    
+                    // Получаем данные из ответа
+                    const response_data = await response.json();
+                    const data = response_data.data;
+                    
+                    // Вставляем данные в textarea с именем 'text'
+                    if (data.text) {
+                        const textarea = document.querySelector('textarea[name="text"]');
+                        if (textarea) {
+                            textarea.value = data.text;
+                        }
                     }
+                } catch (error) {
+                    console.error('Ошибка при генерации:', error);
+                    alert('Произошла ошибка при генерации контента');
+                } finally {
+                    this.loading = false;
                 }
             },
         }));

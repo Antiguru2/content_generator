@@ -15,6 +15,7 @@ def generate(request):
     data = {
         "mark_name": some_obj.auto_mark.name, 
         "service_name": some_obj.service.name,
+        "additional_prompt": additional_prompt,
     }
     headers = {
         'Content-Type': 'application/json',
