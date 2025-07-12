@@ -39,7 +39,7 @@
 </style>
 <div x-data='сontentGeneratorBlock'>
     <div style="padding-bottom: 10px;">
-        <textarea x-model='aditonalPrompt' rows='10' cols='40' style='width: 610px;' id='сontentGeneratorBlockTextarea'></textarea>
+        <textarea x-model='aditonalPrompt' rows='10' cols='40' style='width: 610px;' placeholder='Введите дополнительный текст для генерации' id='сontentGeneratorBlockTextarea'></textarea>
     </div>
     <template x-if='modelId != "None"'>
         <button @click.prevent='clickButton(event)' class='сontent_generator_button' :disabled='loading' x-html='buttonText'></button>
