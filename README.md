@@ -25,8 +25,12 @@ INSTALLED_APPS = [
     # ... другие приложения ...
     
     # submodules
+    'django.contrib.sites',
     'content_generator',
 ]
+
+# Укажите SITE_ID для корректной работы Sites
+# SITE_ID = 1
 ```
 
 Так же добавьте в settings.py переменные из content_generator/local_settings.example.py
