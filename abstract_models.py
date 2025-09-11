@@ -1,5 +1,9 @@
 from django.db import models
 from django.contrib import admin
+from django.contrib.auth import get_user_model
+
+
+User = get_user_model()
 
 
 class AbstractContentGenerator(models.Model):
@@ -9,6 +13,12 @@ class AbstractContentGenerator(models.Model):
     is_generated = models.BooleanField(
         default=False, editable=False,
         verbose_name='Сгенерировано?',
+    )
+    generated_as = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='Кто сгенерил?',
     )
 
     class Meta:
