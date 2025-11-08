@@ -1,0 +1,346 @@
+/* ============================================
+   БАЗОВЫЕ CSS КЛАССЫ
+   ============================================ */
+
+/* Карточки */
+.admin-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 1px solid #e9ecef;
+}
+
+.admin-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.admin-card-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Кнопки */
+.admin-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+    color: white;
+}
+
+.admin-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 124, 186, 0.3);
+}
+
+.admin-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    background: #6c757d;
+    color: white;
+}
+
+.admin-btn-secondary:hover {
+    background: #5a6268;
+}
+
+/* Формы */
+.admin-form-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+    font-family: inherit;
+}
+
+.admin-form-input:focus {
+    outline: none;
+    border-color: #007cba;
+}
+
+.admin-form-input[readonly] {
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.admin-form-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+    resize: vertical;
+    transition: border-color 0.3s ease;
+}
+
+.admin-form-textarea:focus {
+    outline: none;
+    border-color: #007cba;
+}
+
+/* Бейджи */
+.badge-version {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+    color: white;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ============================================
+   СТИЛИ ДЛЯ ТАБЛИЦ
+   ============================================ */
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.admin-table thead {
+    background: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.admin-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #495057;
+}
+
+.admin-table td {
+    padding: 16px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.admin-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.admin-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.admin-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ============================================
+   СТИЛИ ДЛЯ ПОДСВЕТКИ РАЗЛИЧИЙ
+   ============================================ */
+
+.diff-added {
+    background: #d4edda;
+    color: #155724;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.diff-removed {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 2px 4px;
+    border-radius: 3px;
+    text-decoration: line-through;
+}
+
+.diff-changed {
+    background: #fff3cd;
+    color: #856404;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+/* Стили для строк в diff-режиме */
+.diff-line.added,
+.diff-line.insert {
+    background: #e6ffe6;
+    color: #155724;
+}
+
+.diff-line.removed,
+.diff-line.delete {
+    background: #ffe6e6;
+    color: #721c24;
+}
+
+.diff-line.equal {
+    background: white;
+    color: #2c3e50;
+}
+
+.diff-line.empty {
+    background: #f8f9fa;
+    min-height: 20px;
+}
+
+/* Стили для unified diff */
+.unified-diff-line.added {
+    background: #e6ffe6;
+    color: #155724;
+}
+
+.unified-diff-line.removed {
+    background: #ffe6e6;
+    color: #721c24;
+}
+
+.unified-diff-line.context {
+    color: #2c3e50;
+}
+
+.unified-diff-line.header {
+    color: #6c757d;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+/* ============================================
+   АДАПТИВНОСТЬ
+   ============================================ */
+
+/* Медиа-запросы для мобильных устройств */
+@media (max-width: 768px) {
+    /* Адаптивные карточки */
+    .admin-card {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .admin-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    /* Адаптивные кнопки */
+    .admin-btn-primary,
+    .admin-btn-secondary {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 20px;
+    }
+
+    /* Адаптивные формы */
+    .admin-form-input,
+    .admin-form-textarea {
+        font-size: 16px; /* Предотвращает зум на iOS */
+    }
+
+    /* Адаптивные таблицы */
+    .admin-table {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-table thead {
+        display: none;
+    }
+
+    .admin-table tbody {
+        display: block;
+    }
+
+    .admin-table tr {
+        display: block;
+        margin-bottom: 16px;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 12px;
+        background: white;
+    }
+
+    .admin-table td {
+        display: block;
+        text-align: right;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .admin-table td:last-child {
+        border-bottom: none;
+    }
+
+    .admin-table td:before {
+        content: attr(data-label);
+        float: left;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 12px;
+        color: #6c757d;
+    }
+
+    /* Адаптивные бейджи */
+    .badge-version {
+        font-size: 12px;
+        padding: 4px 10px;
+    }
+}
+
+/* Адаптивные таблицы с горизонтальной прокруткой */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-table {
+        min-width: 800px;
+    }
+}
+
+/* Дополнительные адаптивные стили для больших экранов */
+@media (min-width: 1200px) {
+    .admin-card {
+        padding: 24px;
+    }
+
+    .admin-table th,
+    .admin-table td {
+        padding: 18px 20px;
+    }
+}
+
