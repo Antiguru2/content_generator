@@ -1,4 +1,4 @@
-from django.views.generic import TemplateView, ListView, DetailView, CreateView, UpdateView, View
+from django.views.generic import TemplateView, ListView, DetailView, CreateView, UpdateView, DeleteView, View
 from django.utils.decorators import method_decorator
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
@@ -367,6 +367,107 @@ class PromptVersionCloneView(View):
         
         # Редирект на страницу редактирования новой версии
         return redirect('prompt_version_update', id=cloned_version.id)
+
+
+@method_decorator(staff_member_required, name='dispatch')
+class PromptVersionDeleteView(DeleteView):
+    """
+    Представление для удаления версии промпта.
+    Проверяет использование версии (если есть GeneratedContent) и запрещает удаление используемых версий.
+    """
+    model = PromptVersion
+    template_name = 'content_generator/prompt_versions/delete_confirm.html'
+    pk_url_kwarg = 'id'
+    context_object_name = 'version'
+    
+    def get_object(self, queryset=None):
+        """
+        Возвращает объект версии промпта по ID из URL.
+        """
+        if queryset is None:
+            queryset = self.get_queryset()
+        pk = self.kwargs.get(self.pk_url_kwarg)
+        return get_object_or_404(queryset, pk=pk)
+    
+    def get_context_data(self, **kwargs):
+        """
+        Добавляет в контекст информацию об использовании версии и статистику.
+        """
+        context = super().get_context_data(**kwargs)
+        version = context['version']
+        
+        # Проверка использования версии
+        generated_content_count = version.get_generated_content_count()
+        context['generated_content_count'] = generated_content_count
+        context['is_used'] = generated_content_count > 0
+        
+        # Если версия используется, получаем примеры использования
+        if generated_content_count > 0:
+            context['generated_content_examples'] = GeneratedContent.objects.filter(
+                prompt_version=version
+            )[:5]  # Первые 5 примеров
+        
+        return context
+    
+    def get(self, request, *args, **kwargs):
+        """
+        Обрабатывает GET запрос для отображения страницы подтверждения удаления.
+        Проверяет использование версии и запрещает удаление, если версия используется.
+        """
+        self.object = self.get_object()
+        context = self.get_context_data()
+        
+        # Проверка использования версии
+        if context['is_used']:
+            messages.error(
+                request,
+                f'Невозможно удалить версию промпта #{self.object.version_number}, '
+                f'так как она используется в {context["generated_content_count"]} '
+                f'{"записи" if context["generated_content_count"] == 1 else "записях"} сгенерированного контента.'
+            )
+            return redirect('prompt_version_detail', id=self.object.id)
+        
+        return self.render_to_response(context)
+    
+    def post(self, request, *args, **kwargs):
+        """
+        Обрабатывает POST запрос для удаления версии.
+        Проверяет использование версии перед удалением.
+        """
+        self.object = self.get_object()
+        
+        # Повторная проверка использования версии (на случай, если что-то изменилось)
+        generated_content_count = self.object.get_generated_content_count()
+        if generated_content_count > 0:
+            messages.error(
+                request,
+                f'Невозможно удалить версию промпта #{self.object.version_number}, '
+                f'так как она используется в {generated_content_count} '
+                f'{"записи" if generated_content_count == 1 else "записях"} сгенерированного контента.'
+            )
+            return redirect('prompt_version_detail', id=self.object.id)
+        
+        # Сохраняем информацию о версии для сообщения
+        version_number = self.object.version_number
+        description = self.object.description
+        
+        # Удаляем версию
+        self.object.delete()
+        
+        # Уведомление об успешном удалении
+        messages.success(
+            request,
+            f'Версия промпта #{version_number}: "{description[:50]}" успешно удалена.'
+        )
+        
+        # Редирект на список версий
+        return redirect('prompt_version_list')
+    
+    def get_success_url(self):
+        """
+        Возвращает URL для редиректа после успешного удаления.
+        """
+        return reverse('prompt_version_list')
 
 
 # ========== ПОДСИСТЕМА GENERATION ==========
