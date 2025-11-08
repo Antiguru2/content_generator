@@ -3,17 +3,14 @@ import bs4
 import json
 import requests
 import difflib
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional, Union
 
 from django.db import models
 from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 
-from typing import (
-    Union,
-    Optional,
-)
 from bs4 import (
     BeautifulSoup,
     Tag,
@@ -272,29 +269,59 @@ def get_model_by_name(model_name: str) -> Optional[models.Model]:
 
 # ========== ПОДСИСТЕМА PROMPTS ==========
 
-def compare_prompt_versions(content1: str, content2: str) -> Dict[str, Any]:
+def compare_prompt_versions(content1: str, content2: str, max_lines: int = 10000) -> Dict[str, Any]:
     """
     Сравнивает две версии промпта и возвращает структурированные данные для отображения.
     
     Использует difflib для поиска различий между версиями промптов.
     Подсчитывает статистику изменений (добавления, удаления, похожесть).
+    Оптимизировано для больших промптов: ограничивает обработку при превышении max_lines.
     
     Args:
         content1: Содержимое первой версии промпта
         content2: Содержимое второй версии промпта
+        max_lines: Максимальное количество строк для обработки (по умолчанию 10000)
     
     Returns:
         Словарь с ключами:
         - 'side_by_side': список кортежей (line1, line2, tag) для режима Side-by-Side
         - 'unified_diff': список строк для режима Unified Diff
         - 'stats': словарь со статистикой (added, removed, changed, similarity)
+        - 'truncated': флаг, указывающий, были ли данные обрезаны
     """
     # Разбиваем тексты на строки для сравнения (без keepends для чистоты)
     lines1 = content1.splitlines(keepends=False)
     lines2 = content2.splitlines(keepends=False)
     
+    # Оптимизация для больших промптов: ограничиваем обработку
+    truncated = False
+    original_lines1_count = len(lines1)
+    original_lines2_count = len(lines2)
+    
+    if len(lines1) > max_lines or len(lines2) > max_lines:
+        truncated = True
+        # Для больших промптов используем только первые max_lines строк
+        lines1 = lines1[:max_lines]
+        lines2 = lines2[:max_lines]
+        # Пересоздаем содержимое для подсчета похожести
+        content1_truncated = '\n'.join(lines1)
+        content2_truncated = '\n'.join(lines2)
+    else:
+        content1_truncated = content1
+        content2_truncated = content2
+    
     # Используем SequenceMatcher для подсчета похожести
-    matcher = difflib.SequenceMatcher(None, content1, content2)
+    # Для очень больших текстов используем быстрый режим
+    if len(content1_truncated) + len(content2_truncated) > 100000:
+        # Используем isjunk для ускорения на больших текстах
+        matcher = difflib.SequenceMatcher(
+            lambda x: x in ' \t',  # Игнорируем пробелы и табы
+            content1_truncated,
+            content2_truncated
+        )
+    else:
+        matcher = difflib.SequenceMatcher(None, content1_truncated, content2_truncated)
+    
     similarity = matcher.ratio() * 100
     
     # Создаем diff для режима Side-by-Side
@@ -349,12 +376,263 @@ def compare_prompt_versions(content1: str, content2: str) -> Dict[str, Any]:
         'removed': removed_count,
         'changed': changed_count,
         'similarity': round(similarity, 2),
-        'total_lines_1': len(lines1),
-        'total_lines_2': len(lines2),
+        'total_lines_1': original_lines1_count,
+        'total_lines_2': original_lines2_count,
+        'processed_lines_1': len(lines1),
+        'processed_lines_2': len(lines2),
     }
     
     return {
         'side_by_side': side_by_side,
         'unified_diff': unified_diff_lines,
         'stats': stats,
+        'truncated': truncated,
     }
+
+
+def get_prompt_statistics(prompt_version) -> Dict[str, Any]:
+    """
+    Подсчитывает статистику использования версии промпта.
+    
+    Использует оптимизированные запросы к БД (aggregate, annotate) для подсчета метрик.
+    Поддерживает кэширование результатов (опционально, через Django cache).
+    
+    Args:
+        prompt_version: Экземпляр модели PromptVersion
+    
+    Returns:
+        Словарь со статистикой:
+        - 'generated_count': количество сгенерированного контента
+        - 'reviewed_count': количество проверенного контента
+        - 'review_percentage': процент проверенного контента
+        - 'average_rating': средний рейтинг (если доступен)
+        - 'success_count': количество успешных генераций
+        - 'failure_count': количество неудачных генераций
+        - 'pending_count': количество ожидающих генераций
+    """
+    # Проверяем кэш
+    cache_key = f'prompt_statistics_{prompt_version.id}'
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
+    try:
+        GeneratedContent = apps.get_model('content_generator', 'GeneratedContent')
+        if not GeneratedContent:
+            return {
+                'generated_count': 0,
+                'reviewed_count': 0,
+                'review_percentage': 0.0,
+                'average_rating': None,
+                'success_count': 0,
+                'failure_count': 0,
+                'pending_count': 0,
+            }
+        
+        # Оптимизированный запрос с использованием aggregate
+        from django.db.models import Count, Avg, Q
+        
+        queryset = GeneratedContent.objects.filter(prompt_version=prompt_version)
+        
+        # Подсчитываем все метрики одним запросом
+        stats = queryset.aggregate(
+            generated_count=Count('id'),
+            reviewed_count=Count('id', filter=Q(reviewed_at__isnull=False)),
+            success_count=Count('id', filter=Q(status='SUCCESS')),
+            failure_count=Count('id', filter=Q(status='FAILURE')),
+            pending_count=Count('id', filter=Q(status__in=['PENDING', 'PROCESSING'])),
+            average_rating=Avg('rating', filter=Q(rating__isnull=False)),
+        )
+        
+        # Вычисляем процент проверенного контента
+        generated_count = stats['generated_count'] or 0
+        reviewed_count = stats['reviewed_count'] or 0
+        review_percentage = round((reviewed_count / generated_count * 100), 2) if generated_count > 0 else 0.0
+        
+        result = {
+            'generated_count': generated_count,
+            'reviewed_count': reviewed_count,
+            'review_percentage': review_percentage,
+            'average_rating': round(stats['average_rating'], 2) if stats['average_rating'] is not None else None,
+            'success_count': stats['success_count'] or 0,
+            'failure_count': stats['failure_count'] or 0,
+            'pending_count': stats['pending_count'] or 0,
+        }
+        
+        # Кэшируем результат на 5 минут
+        cache.set(cache_key, result, 300)
+        
+        return result
+        
+    except (LookupError, AttributeError) as e:
+        # Если модель не найдена, возвращаем пустую статистику
+        return {
+            'generated_count': 0,
+            'reviewed_count': 0,
+            'review_percentage': 0.0,
+            'average_rating': None,
+            'success_count': 0,
+            'failure_count': 0,
+            'pending_count': 0,
+        }
+
+
+# ========== ПОДСИСТЕМА GENERATION ==========
+
+def sanitize_html_tags(text: str, allowed_tags: Optional[List[str]] = None) -> str:
+    """
+    Санитизирует HTML-теги в тексте, удаляя опасные теги и оставляя только разрешенные.
+    
+    Args:
+        text: Текст для санитизации
+        allowed_tags: Список разрешенных HTML-тегов (по умолчанию None - удаляются все теги)
+    
+    Returns:
+        Очищенный от HTML-тегов текст
+    """
+    if not text:
+        return ''
+    
+    if allowed_tags is None:
+        # Удаляем все HTML-теги
+        # Используем BeautifulSoup для безопасного парсинга
+        try:
+            soup = BeautifulSoup(text, 'html.parser')
+            # Получаем только текстовое содержимое
+            return soup.get_text(separator=' ', strip=True)
+        except Exception:
+            # Если BeautifulSoup не справился, используем регулярное выражение
+            # Безопасное удаление всех HTML-тегов
+            text = re.sub(r'<[^>]+>', '', text)
+            # Декодируем HTML-сущности
+            text = text.replace('&nbsp;', ' ')
+            text = text.replace('&amp;', '&')
+            text = text.replace('&lt;', '<')
+            text = text.replace('&gt;', '>')
+            text = text.replace('&quot;', '"')
+            text = text.replace('&#39;', "'")
+            return text.strip()
+    else:
+        # Оставляем только разрешенные теги
+        try:
+            soup = BeautifulSoup(text, 'html.parser')
+            # Удаляем все теги, кроме разрешенных
+            for tag in soup.find_all(True):
+                if tag.name not in allowed_tags:
+                    tag.unwrap()  # Удаляем тег, но оставляем содержимое
+            return str(soup)
+        except Exception:
+            # Fallback: используем регулярное выражение
+            # Создаем паттерн для разрешенных тегов
+            allowed_pattern = '|'.join(allowed_tags)
+            # Удаляем все теги, кроме разрешенных
+            text = re.sub(
+                rf'<(?!\/?(?:{allowed_pattern})\b)[^>]+>',
+                '',
+                text,
+                flags=re.IGNORECASE
+            )
+            return text.strip()
+
+
+def validate_prompt_length(prompt_content: str, max_length: int = 50000, min_length: int = 1) -> Tuple[bool, Optional[str]]:
+    """
+    Валидирует длину промпта.
+    
+    Args:
+        prompt_content: Содержимое промпта для валидации
+        max_length: Максимальная допустимая длина (по умолчанию 50000)
+        min_length: Минимальная допустимая длина (по умолчанию 1)
+    
+    Returns:
+        Кортеж (is_valid, error_message):
+        - is_valid: True, если длина валидна, False в противном случае
+        - error_message: Сообщение об ошибке или None, если валидация прошла успешно
+    """
+    if not isinstance(prompt_content, str):
+        return False, 'Промпт должен быть строкой'
+    
+    content_length = len(prompt_content)
+    
+    if content_length < min_length:
+        return False, f'Промпт слишком короткий. Минимальная длина: {min_length} символов'
+    
+    if content_length > max_length:
+        return False, f'Промпт слишком длинный. Максимальная длина: {max_length} символов. Текущая длина: {content_length}'
+    
+    return True, None
+
+
+def validate_generation_data(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
+    """
+    Валидирует формат данных для генерации контента.
+    
+    Проверяет наличие обязательных полей и корректность их типов.
+    
+    Args:
+        data: Словарь с данными для генерации
+    
+    Returns:
+        Кортеж (is_valid, error_message):
+        - is_valid: True, если данные валидны, False в противном случае
+        - error_message: Сообщение об ошибке или None, если валидация прошла успешно
+    """
+    if not isinstance(data, dict):
+        return False, 'Данные должны быть словарем (dict)'
+    
+    # Проверяем обязательные поля
+    required_fields = ['class_name', 'model_id', 'action']
+    
+    for field in required_fields:
+        if field not in data:
+            return False, f'Отсутствует обязательное поле: {field}'
+    
+    # Валидация class_name
+    class_name = data.get('class_name')
+    if not isinstance(class_name, str) or not class_name.strip():
+        return False, 'Поле class_name должно быть непустой строкой'
+    
+    # Валидация model_id
+    model_id = data.get('model_id')
+    if not isinstance(model_id, (int, str)):
+        return False, 'Поле model_id должно быть числом или строкой'
+    
+    try:
+        model_id_int = int(model_id)
+        if model_id_int <= 0:
+            return False, 'Поле model_id должно быть положительным числом'
+    except (ValueError, TypeError):
+        return False, 'Поле model_id должно быть валидным числом'
+    
+    # Валидация action
+    action = data.get('action')
+    if not isinstance(action, str) or not action.strip():
+        return False, 'Поле action должно быть непустой строкой'
+    
+    # Проверяем допустимые значения action
+    allowed_actions = ['set_seo_params', 'set_description', 'upgrade_name', 'set_some_params']
+    if action not in allowed_actions:
+        return False, f'Поле action должно быть одним из: {", ".join(allowed_actions)}'
+    
+    # Валидация опциональных полей
+    if 'prompt_version_id' in data:
+        prompt_version_id = data.get('prompt_version_id')
+        if prompt_version_id is not None:
+            try:
+                prompt_version_id_int = int(prompt_version_id)
+                if prompt_version_id_int <= 0:
+                    return False, 'Поле prompt_version_id должно быть положительным числом'
+            except (ValueError, TypeError):
+                return False, 'Поле prompt_version_id должно быть валидным числом или None'
+    
+    if 'additional_prompt' in data:
+        additional_prompt = data.get('additional_prompt')
+        if additional_prompt is not None and not isinstance(additional_prompt, str):
+            return False, 'Поле additional_prompt должно быть строкой или None'
+    
+    if 'async_mode' in data:
+        async_mode = data.get('async_mode')
+        if not isinstance(async_mode, bool):
+            return False, 'Поле async_mode должно быть булевым значением'
+    
+    return True, None
