@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from content_generator import api
 from content_generator import views
 
@@ -23,6 +23,10 @@ urlpatterns = [
     path('admin/prompt-versions/<int:id>/', views.PromptVersionDetailView.as_view(), name='prompt_version_detail'),
     # Сравнение версий промптов
     path('admin/prompt-versions/compare/<int:id1>/<int:id2>/', views.PromptVersionCompareView.as_view(), name='prompt_version_compare'),
+    
+    # ========== API ПОДСИСТЕМА PROMPTS ==========
+    # REST API для версий промптов
+    path('api/', include('content_generator.api.urls')),
     
     # Старые endpoints для обратной совместимости
     path('set_seo_params/', api.set_seo_params, name='set_seo_params'),
