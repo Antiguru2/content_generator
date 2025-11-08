@@ -1,0 +1,100 @@
+{% load static %}
+<nav class="bg-white shadow-md border-b border-gray-200">
+    <div class="container mx-auto px-4">
+        <div class="flex items-center justify-between h-16">
+            <!-- Logo/Brand -->
+            <div class="flex items-center">
+                <a href="{% url 'prompt_version_list' %}" class="flex items-center space-x-2 text-xl font-semibold text-gray-800 hover:text-blue-600 transition-colors">
+                    <i class="fas fa-robot text-blue-600"></i>
+                    <span>Content Generator</span>
+                </a>
+            </div>
+            
+            <!-- Navigation Links -->
+            <div class="hidden md:flex items-center space-x-6">
+                <a href="{% url 'prompt_version_list' %}" 
+                   class="nav-link {% if request.resolver_match.url_name == 'prompt_version_list' %}active{% endif %}">
+                    <i class="fas fa-list mr-2"></i>
+                    Версии промптов
+                </a>
+                <a href="{% url 'prompt_version_create' %}" 
+                   class="nav-link {% if request.resolver_match.url_name == 'prompt_version_create' %}active{% endif %}">
+                    <i class="fas fa-plus mr-2"></i>
+                    Создать версию
+                </a>
+            </div>
+            
+            <!-- User Menu -->
+            <div class="flex items-center space-x-4">
+                {% if user.is_authenticated %}
+                    <div class="relative group">
+                        <button class="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors focus:outline-none">
+                            <i class="fas fa-user-circle text-xl"></i>
+                            <span class="hidden md:inline">{{ user.get_full_name|default:user.username }}</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <a href="/admin/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-cog mr-2"></i>
+                                Django Admin
+                            </a>
+                            <a href="{% url 'account_logout' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-sign-out-alt mr-2"></i>
+                                Выход
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <a href="{% url 'account_login' %}" class="text-gray-700 hover:text-blue-600 transition-colors">
+                        <i class="fas fa-sign-in-alt mr-2"></i>
+                        Вход
+                    </a>
+                {% endif %}
+            </div>
+            
+            <!-- Mobile Menu Button -->
+            <button id="mobile-menu-button" class="md:hidden text-gray-700 hover:text-blue-600 focus:outline-none">
+                <i class="fas fa-bars text-xl"></i>
+            </button>
+        </div>
+        
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden pb-4">
+            <a href="{% url 'prompt_version_list' %}" 
+               class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md {% if request.resolver_match.url_name == 'prompt_version_list' %}bg-blue-50 text-blue-600{% endif %}">
+                <i class="fas fa-list mr-2"></i>
+                Версии промптов
+            </a>
+            <a href="{% url 'prompt_version_create' %}" 
+               class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md {% if request.resolver_match.url_name == 'prompt_version_create' %}bg-blue-50 text-blue-600{% endif %}">
+                <i class="fas fa-plus mr-2"></i>
+                Создать версию
+            </a>
+        </div>
+    </div>
+</nav>
+
+<style>
+    .nav-link {
+        @apply px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors;
+    }
+    
+    .nav-link.active {
+        @apply text-blue-600 bg-blue-50;
+    }
+</style>
+
+<script>
+    // Mobile menu toggle
+    document.addEventListener('DOMContentLoaded', function() {
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        
+        if (mobileMenuButton && mobileMenu) {
+            mobileMenuButton.addEventListener('click', function() {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
+    });
+</script>
+
