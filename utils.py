@@ -636,3 +636,40 @@ def validate_generation_data(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]
             return False, 'Поле async_mode должно быть булевым значением'
     
     return True, None
+
+
+def process_generation_result(ai_task) -> Optional[Dict[str, Any]]:
+    """
+    Обрабатывает результат генерации от ai_interface.
+    
+    Использует ai_interface_adapter для создания/обновления GeneratedContent
+    и связывания его с PromptVersion.
+    
+    Args:
+        ai_task: Экземпляр AITask из ai_interface с результатом генерации
+    
+    Returns:
+        Словарь с информацией о результате обработки или None при ошибке
+    """
+    from content_generator.ai_interface_adapter import process_generation_result as process_result
+    
+    try:
+        generated_content = process_result(ai_task)
+        if generated_content:
+            return {
+                'status': 'success',
+                'generated_content_id': generated_content.id,
+                'prompt_version_id': generated_content.prompt_version.id if generated_content.prompt_version else None,
+            }
+        else:
+            return {
+                'status': 'error',
+                'message': 'Failed to process generation result'
+            }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            'status': 'error',
+            'message': str(e)
+        }

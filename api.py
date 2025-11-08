@@ -6,6 +6,11 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, HttpResponse
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.sites.shortcuts import get_current_site
+
+from content_generator.models import PromptVersion
+from content_generator.ai_interface_adapter import create_generation_task
 
 
 # Словарь для маппинга действий на методы
@@ -27,6 +32,7 @@ def generate(request):
         - class_name (str): Имя класса модели (например, 'product', 'category')
         - model_id (int): ID объекта модели
         - action (str): Действие для выполнения (set_seo_params, set_description, etc.)
+        - prompt_version_id (int, optional): ID версии промпта (если не указан, используется последняя)
         - additional_prompt (str, optional): Дополнительный промпт от пользователя
         - async_mode (bool, optional): Выполнять асинхронно (по умолчанию False)
     
@@ -38,6 +44,7 @@ def generate(request):
         class_name = request.GET.get('class_name')
         model_id = request.GET.get('model_id')
         action = request.GET.get('action')
+        prompt_version_id = request.GET.get('prompt_version_id')
         additional_prompt = request.GET.get('additional_prompt', '')
         async_mode = request.GET.get('async_mode', 'false').lower() == 'true'
         
@@ -77,52 +84,69 @@ def generate(request):
                 'message': f'Модель {class_name} не поддерживает действие {action}'
             }, status=400)
         
+        # Получаем версию промпта
+        prompt_version = None
+        if prompt_version_id:
+            try:
+                prompt_version = PromptVersion.objects.get(id=prompt_version_id)
+            except PromptVersion.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Версия промпта с ID {prompt_version_id} не найдена'
+                }, status=404)
+        else:
+            # Используем последнюю версию, если не указана
+            prompt_version = PromptVersion.get_latest_version()
+            if not prompt_version:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Не найдено ни одной версии промпта. Создайте версию промпта перед генерацией.'
+                }, status=404)
+        
         # Если асинхронный режим - создаем задачу через ai_interface
         if async_mode:
             try:
-                from ai_interface.models import AITask
+                from ai_interface.models import AIProvider
                 
-                # Создаем задачу
-                task = AITask.objects.create(
-                    agent_name=f'content_generator_{action}',
-                    data={
-                        'class_name': class_name,
-                        'model_id': model_id,
-                        'action': action,
-                        'additional_prompt': additional_prompt,
-                    },
-                    status='PENDING'
+                # Получаем ContentType для модели
+                content_type = ContentType.objects.get_for_model(model_instance)
+                
+                # Получаем домен
+                site = get_current_site(request)
+                domain = site.domain if site else None
+                
+                # Формируем дополнительные данные
+                additional_data = {}
+                if additional_prompt:
+                    additional_data['additional_prompt'] = additional_prompt
+                
+                # Создаем задачу через адаптер
+                task = create_generation_task(
+                    prompt_version=prompt_version,
+                    content_type=content_type,
+                    object_id=int(model_id),
+                    action=action,
+                    additional_data=additional_data if additional_data else None,
+                    provider=None,  # Используем AILENGO из настроек
+                    domain=domain
                 )
-                
-                # Запускаем выполнение в фоновом потоке
-                def execute_task():
-                    try:
-                        execute_generation_action(
-                            model_instance, 
-                            action, 
-                            additional_prompt
-                        )
-                        task.status = 'SUCCESS'
-                        task.result = {'success': True}
-                        task.save()
-                    except Exception as e:
-                        task.status = 'FAILURE'
-                        task.result = {'error': str(e), 'traceback': traceback.format_exc()}
-                        task.save()
-                
-                thread = threading.Thread(target=execute_task)
-                thread.daemon = True
-                thread.start()
                 
                 return JsonResponse({
                     'status': 'ok',
                     'task_id': task.id,
-                    'message': 'Задача создана и выполняется'
+                    'prompt_version_id': prompt_version.id,
+                    'message': 'Задача создана и отправлена в AI-провайдер'
                 })
                 
             except ImportError:
                 # Если ai_interface недоступен, выполняем синхронно
                 pass
+            except Exception as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Ошибка при создании задачи: {str(e)}',
+                    'traceback': traceback.format_exc()
+                }, status=500)
         
         # Синхронное выполнение
         execute_generation_action(model_instance, action, additional_prompt)
