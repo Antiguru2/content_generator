@@ -1,0 +1,543 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Генерация контента 2.0</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <script src='//unpkg.com/alpinejs' defer></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .widget-container {
+            width: 100%;
+            max-width: none;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+        }
+        
+        .widget-header {
+            margin-bottom: 20px;
+        }
+        
+        .widget-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        
+        .widget-description {
+            font-size: 14px;
+            color: #6c757d;
+            line-height: 1.5;
+        }
+        
+        .prompt-section {
+            margin-bottom: 24px;
+        }
+        
+        .prompt-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+        
+        .prompt-textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        .prompt-textarea:focus {
+            outline: none;
+            border-color: #007cba;
+            box-shadow: 0 0 0 3px rgba(0, 124, 186, 0.1);
+        }
+        
+        .prompt-textarea::placeholder {
+            color: #adb5bd;
+        }
+        
+        .actions-section {
+            margin-bottom: 16px;
+        }
+        
+        .actions-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 12px;
+        }
+        
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        
+        .action-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 124, 186, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .action-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 124, 186, 0.3);
+        }
+        
+        .action-button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        .action-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background: #6c757d;
+        }
+        
+        .action-button.in-progress {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            pointer-events: none;
+        }
+        
+        .action-icon {
+            font-size: 16px;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .status-message {
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-message.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .status-message.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .status-message.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .status-message.warning {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+        }
+        
+        .fade-enter {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        
+        .fade-enter-active {
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        
+        .fade-leave {
+            opacity: 1;
+        }
+        
+        .fade-leave-active {
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div 
+        class="widget-container"
+        x-data="contentGeneratorWidget"
+        x-cloak
+        x-show="open"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 transform scale-95"
+        x-transition:enter-end="opacity-100 transform scale-100"
+    >
+        <div class="widget-header">
+            <h2 class="widget-title">✨ Генерация контента 2.0</h2>
+            <p class="widget-description">
+                Используйте AI для автоматической генерации и улучшения контента. 
+                Вы можете добавить дополнительные инструкции в поле ниже.
+            </p>
+        </div>
+        
+        <!-- Проверка на существование объекта -->
+        <template x-if="modelId === 'None' || !modelId">
+            <div class="status-message warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>⚠️ Объект не создан. Сохраните объект перед использованием генерации контента.</span>
+            </div>
+        </template>
+        
+        <template x-if="modelId !== 'None' && modelId">
+            <div>
+                <!-- Поле для дополнительного промпта -->
+                <div class="prompt-section">
+                    <label class="prompt-label" for="additionalPrompt">
+                        <i class="fas fa-pen"></i> Дополнительные инструкции (опционально)
+                    </label>
+                    <textarea 
+                        id="additionalPrompt"
+                        class="prompt-textarea"
+                        x-model="additionalPrompt"
+                        :disabled="loading"
+                        placeholder="Например: Сделай текст более профессиональным и добавь технические детали..."
+                        rows="4"
+                    ></textarea>
+                </div>
+                
+                <!-- Кнопки действий -->
+                <div class="actions-section">
+                    <label class="actions-label">
+                        <i class="fas fa-magic"></i> Выберите действие
+                    </label>
+                    <div class="actions-grid">
+                        <template x-for="action in actions" :key="action.name">
+                            <button
+                                class="action-button"
+                                :class="{ 'in-progress': loading && currentAction === action.name }"
+                                :disabled="loading"
+                                @click="executeAction(action.name)"
+                            >
+                                <template x-if="loading && currentAction === action.name">
+                                    <span class="spinner"></span>
+                                </template>
+                                <template x-if="!(loading && currentAction === action.name)">
+                                    <span class="action-icon" x-text="action.icon"></span>
+                                </template>
+                                <span x-text="action.label"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+                
+                <!-- Статусные сообщения -->
+                <template x-if="statusMessage">
+                    <div 
+                        class="status-message"
+                        :class="statusType"
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 transform translate-y-2"
+                        x-transition:enter-end="opacity-100 transform translate-y-0"
+                    >
+                        <template x-if="statusType === 'info'">
+                            <i class="fas fa-info-circle"></i>
+                        </template>
+                        <template x-if="statusType === 'success'">
+                            <i class="fas fa-check-circle"></i>
+                        </template>
+                        <template x-if="statusType === 'error'">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </template>
+                        <span x-text="statusMessage"></span>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('contentGeneratorWidget', () => ({
+                // Параметры берём из query string, контекст не используем
+                naturalKey: '',
+                modelId: '',
+                
+                // Состояние
+                open: false,
+                loading: false,
+                currentAction: null,
+                additionalPrompt: '',
+                statusMessage: '',
+                statusType: 'info', // info, success, error
+                
+                // Доступные действия
+                actions: [
+                    { 
+                        name: 'set_seo_params', 
+                        label: 'SEO параметры', 
+                        icon: '🔍'
+                    },
+                    { 
+                        name: 'set_description', 
+                        label: 'Полное описание', 
+                        icon: '📝'
+                    },
+                    { 
+                        name: 'upgrade_name', 
+                        label: 'Улучшить название', 
+                        icon: '✨'
+                    },
+                    { 
+                        name: 'change_img', 
+                        label: 'Выбрать картинку', 
+                        icon: '🖼️'
+                    },
+                    { 
+                        name: 'set_some_params', 
+                        label: 'Улучшить SEO и description', 
+                        icon: '🚀'
+                    }
+                ],
+                
+                // Инициализация
+                init() {
+                    // Считываем параметры из URL
+                    const params = new URLSearchParams(window.location.search);
+
+                    this.naturalKey = params.get('natural_key');
+                    this.modelId = params.get('obj_id') 
+
+                    console.log('Content Generator Widget initialized');
+                    console.log('Natural Key:', this.naturalKey);
+                    console.log('Model ID:', this.modelId);
+                    
+                    // Показываем виджет с анимацией
+                    setTimeout(() => {
+                        this.open = true;
+                    }, 100);
+                },
+                
+                // Выполнение действия
+                async executeAction(actionName) {
+                    if (this.loading) return;
+                    
+                    const action = this.actions.find(a => a.name === actionName);
+                    if (!action) {
+                        console.error('Action not found:', actionName);
+                        return;
+                    }
+                    
+                    console.log('Executing action:', actionName);
+                    
+                    this.loading = true;
+                    this.currentAction = actionName;
+                    this.statusMessage = `Генерация ${action.label.toLowerCase()}...`;
+                    this.statusType = 'info';
+                    
+                    try {
+                        // Формируем URL с параметрами (используем новый унифицированный endpoint)
+                        const url = new URL('/content_generator/generate/', window.location.origin);
+                        url.searchParams.append('class_name', this.naturalKey.split('.')[1] || this.naturalKey);
+                        url.searchParams.append('model_id', this.modelId);
+                        url.searchParams.append('action', actionName);
+                        url.searchParams.append('async_mode', 'true');
+                        
+                        if (this.additionalPrompt.trim()) {
+                            url.searchParams.append('additional_prompt', this.additionalPrompt);
+                        }
+                        
+                        console.log('Request URL:', url.toString());
+                        
+                        // Отправляем запрос
+                        const response = await fetch(url.toString(), {
+                            method: 'GET',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'same-origin'
+                        });
+                        
+                        console.log('Response status:', response.status);
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        const data = await response.json();
+                        console.log('Response data:', data);
+                        
+                        if (data.status === 'error') {
+                            throw new Error(data.message || 'Неизвестная ошибка');
+                        }
+                        
+                        if (data.task_id) {
+                            // Если есть task_id, начинаем проверку статуса
+                            this.statusMessage = 'Задача создана, ожидание выполнения...';
+                            await this.checkTaskStatus(data.task_id);
+                        } else if (data.status === 'ok' || data.success) {
+                            // Успешное завершение (синхронный режим)
+                            this.handleSuccess();
+                        } else {
+                            throw new Error('Неожиданный формат ответа');
+                        }
+                        
+                    } catch (error) {
+                        console.error('Error executing action:', error);
+                        this.statusMessage = `Ошибка: ${error.message}`;
+                        this.statusType = 'error';
+                        this.loading = false;
+                        this.currentAction = null;
+                    }
+                },
+                
+                // Проверка статуса задачи (polling)
+                async checkTaskStatus(taskId) {
+                    const maxAttempts = 60; // 3 минуты (60 * 3 секунды)
+                    let attempts = 0;
+                    
+                    const checkStatus = async () => {
+                        try {
+                            const response = await fetch(`/api/ai/check_task/${taskId}/`, {
+                                method: 'GET',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                credentials: 'same-origin'
+                            });
+                            
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}`);
+                            }
+                            
+                            const data = await response.json();
+                            console.log('Task status:', data);
+                            
+                            if (data.status === 'SUCCESS' || data.status === 'ok') {
+                                // Успешное завершение
+                                this.handleSuccess();
+                                return true;
+                            } else if (data.status === 'FAILURE' || data.status === 'error') {
+                                // Ошибка выполнения
+                                throw new Error(data.error || 'Задача завершилась с ошибкой');
+                            } else if (data.status === 'PENDING' || data.status === 'PROGRESS') {
+                                // Задача еще выполняется
+                                attempts++;
+                                
+                                if (attempts >= maxAttempts) {
+                                    throw new Error('Превышено время ожидания выполнения задачи');
+                                }
+                                
+                                // Обновляем сообщение с количеством попыток
+                                this.statusMessage = `Генерация... (${attempts}/${maxAttempts})`;
+                                
+                                // Повторяем через 3 секунды
+                                setTimeout(checkStatus, 3000);
+                                return false;
+                            }
+                            
+                        } catch (error) {
+                            console.error('Error checking task status:', error);
+                            this.statusMessage = `Ошибка проверки статуса: ${error.message}`;
+                            this.statusType = 'error';
+                            this.loading = false;
+                            this.currentAction = null;
+                            return true;
+                        }
+                    };
+                    
+                    // Начинаем проверку
+                    await checkStatus();
+                },
+                
+                // Обработка успешного завершения
+                handleSuccess() {
+                    this.statusMessage = '✅ Генерация завершена успешно! Страница обновляется...';
+                    this.statusType = 'success';
+                    
+                    // Через 1 секунду перезагружаем родительскую страницу
+                    setTimeout(() => {
+                        this.reloadParent();
+                    }, 1000);
+                },
+                
+                // Перезагрузка родительской страницы
+                reloadParent() {
+                    try {
+                        if (window.parent && window.parent !== window) {
+                            // Мы внутри iframe - перезагружаем родительскую страницу
+                            window.parent.location.reload();
+                        } else {
+                            // Мы не внутри iframe - перезагружаем текущую страницу
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        console.error('Error reloading parent:', error);
+                        // Если не получилось перезагрузить родителя, перезагружаем себя
+                        window.location.reload();
+                    }
+                }
+            }));
+        });
+    </script>
+</body>
+</html>
