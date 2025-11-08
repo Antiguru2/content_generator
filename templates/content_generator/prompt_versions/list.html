@@ -1,0 +1,593 @@
+{% extends 'content_generator/base.html' %}
+
+{% block title %}Список версий промптов - Content Generator{% endblock title %}
+
+{% block extra_css %}
+<style>
+    .version-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+        color: white;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    
+    .stat-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        margin-right: 6px;
+        margin-bottom: 4px;
+    }
+    
+    .stat-badge-primary {
+        background: #e7f3ff;
+        color: #007cba;
+        border: 1px solid #b3d9f0;
+    }
+    
+    .stat-badge-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .stat-badge-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+    
+    .stat-badge-warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+    
+    .preview-text {
+        color: #6c757d;
+        font-size: 13px;
+        max-width: 400px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    
+    .table-header {
+        background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+        color: white;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .table-header h1 {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0;
+    }
+    
+    .table-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+    
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        font-family: inherit;
+    }
+    
+    .btn-primary {
+        background: white;
+        color: #007cba;
+        border: 2px solid white;
+    }
+    
+    .btn-primary:hover {
+        background: #f8f9fa;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+    }
+    
+    .btn-compare {
+        background: #28a745;
+        color: white;
+        border: 2px solid #28a745;
+    }
+    
+    .btn-compare:hover {
+        background: #218838;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    }
+    
+    .btn-compare:disabled {
+        background: #6c757d;
+        border-color: #6c757d;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    
+    .versions-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .versions-table thead {
+        background: #f8f9fa;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .versions-table th {
+        padding: 14px 16px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #495057;
+    }
+    
+    .versions-table td {
+        padding: 16px;
+        border-bottom: 1px solid #e9ecef;
+        vertical-align: middle;
+    }
+    
+    .versions-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .versions-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .checkbox-cell {
+        width: 50px;
+        text-align: center;
+    }
+    
+    .version-cell {
+        width: 120px;
+    }
+    
+    .description-cell {
+        min-width: 300px;
+    }
+    
+    .engineer-cell {
+        width: 150px;
+    }
+    
+    .date-cell {
+        width: 180px;
+    }
+    
+    .stats-cell {
+        min-width: 200px;
+    }
+    
+    .actions-cell {
+        width: 150px;
+    }
+    
+    .action-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 13px;
+        transition: all 0.2s ease;
+        margin-right: 8px;
+    }
+    
+    .action-link-view {
+        color: #007cba;
+        background: #e7f3ff;
+    }
+    
+    .action-link-view:hover {
+        background: #b3d9f0;
+    }
+    
+    .action-link-edit {
+        color: #856404;
+        background: #fff3cd;
+    }
+    
+    .action-link-edit:hover {
+        background: #ffeaa7;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    
+    .empty-state-icon {
+        font-size: 64px;
+        color: #dee2e6;
+        margin-bottom: 20px;
+    }
+    
+    .empty-state h2 {
+        font-size: 24px;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 12px;
+    }
+    
+    .empty-state p {
+        font-size: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .pagination a,
+    .pagination span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 36px;
+        padding: 0 12px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .pagination a {
+        color: #007cba;
+        background: white;
+        border: 1px solid #dee2e6;
+    }
+    
+    .pagination a:hover {
+        background: #e7f3ff;
+        border-color: #007cba;
+    }
+    
+    .pagination .current {
+        background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+        color: white;
+        border: 1px solid #007cba;
+    }
+    
+    .compare-banner {
+        background: #e7f3ff;
+        border: 2px solid #007cba;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .compare-banner.hidden {
+        display: none;
+    }
+    
+    .compare-banner-text {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #007cba;
+        font-weight: 500;
+    }
+    
+    .compare-selection-form {
+        display: inline;
+    }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+<div class="table-container">
+    <!-- Заголовок с кнопкой "Добавить версию" -->
+    <div class="table-header">
+        <h1>
+            <i class="fas fa-list"></i> Список версий промптов
+        </h1>
+        <div class="table-actions">
+            <a href="{% url 'prompt_version_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Добавить версию
+            </a>
+        </div>
+    </div>
+    
+    <!-- Баннер для сравнения выбранных версий -->
+    <div id="compareBanner" class="compare-banner {% if not can_compare %}hidden{% endif %}">
+        <div class="compare-banner-text">
+            <i class="fas fa-check-circle"></i>
+            <span>Выбрано 2 версии для сравнения</span>
+        </div>
+        {% if can_compare %}
+        <a href="{{ compare_url }}" class="btn btn-compare">
+            <i class="fas fa-balance-scale"></i> Сравнить выбранные версии
+        </a>
+        {% endif %}
+    </div>
+    
+    <!-- Таблица версий -->
+    {% if versions_with_stats %}
+    <form method="get" action="{% url 'prompt_version_list' %}" id="compareForm" class="compare-selection-form">
+        <table class="versions-table">
+            <thead>
+                <tr>
+                    <th class="checkbox-cell">
+                        <input type="checkbox" id="selectAll" title="Выбрать все">
+                    </th>
+                    <th class="version-cell">Версия</th>
+                    <th class="description-cell">Описание + превью</th>
+                    <th class="engineer-cell">Инженер</th>
+                    <th class="date-cell">Дата создания</th>
+                    <th class="stats-cell">Статистика</th>
+                    <th class="actions-cell">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in versions_with_stats %}
+                <tr>
+                    <!-- Чекбокс для выбора -->
+                    <td class="checkbox-cell">
+                        <input 
+                            type="checkbox" 
+                            name="compare" 
+                            value="{{ item.version.id }}"
+                            class="version-checkbox"
+                            {% if item.is_selected %}checked{% endif %}
+                            onchange="updateCompareButton()"
+                        >
+                    </td>
+                    
+                    <!-- Версия (бейдж) -->
+                    <td class="version-cell">
+                        <span class="version-badge">
+                            v{{ item.version.version_number }}
+                        </span>
+                    </td>
+                    
+                    <!-- Описание + превью -->
+                    <td class="description-cell">
+                        <div style="font-weight: 500; margin-bottom: 4px; color: #2c3e50;">
+                            {{ item.version.description|truncatewords:15 }}
+                        </div>
+                        <div class="preview-text" title="{{ item.version.prompt_content|truncatewords:50 }}">
+                            {{ item.version.prompt_content|truncatewords:20 }}
+                        </div>
+                    </td>
+                    
+                    <!-- Инженер -->
+                    <td class="engineer-cell">
+                        <span style="color: #495057;">
+                            <i class="fas fa-user"></i> {{ item.version.engineer_name }}
+                        </span>
+                    </td>
+                    
+                    <!-- Дата создания -->
+                    <td class="date-cell">
+                        <span style="color: #6c757d; font-size: 13px;">
+                            <i class="far fa-calendar"></i> {{ item.version.created_at|date:"d.m.Y H:i" }}
+                        </span>
+                    </td>
+                    
+                    <!-- Статистика (бейджи) -->
+                    <td class="stats-cell">
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                            <span class="stat-badge stat-badge-primary" title="Сгенерировано контента">
+                                <i class="fas fa-file-alt"></i> {{ item.stats.generated_count }}
+                            </span>
+                            <span class="stat-badge stat-badge-success" title="Проверено контента">
+                                <i class="fas fa-check"></i> {{ item.stats.reviewed_count }}
+                            </span>
+                            <span class="stat-badge stat-badge-info" title="Процент проверенного">
+                                <i class="fas fa-percent"></i> {{ item.stats.review_percentage|floatformat:1 }}%
+                            </span>
+                            {% if item.stats.average_rating %}
+                            <span class="stat-badge stat-badge-warning" title="Средний рейтинг">
+                                <i class="fas fa-star"></i> {{ item.stats.average_rating|floatformat:1 }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    
+                    <!-- Действия (просмотр, редактирование) -->
+                    <td class="actions-cell">
+                        <a href="{% url 'prompt_version_detail' id=item.version.id %}" class="action-link action-link-view" title="Просмотр">
+                            <i class="fas fa-eye"></i> Просмотр
+                        </a>
+                        <a href="{% url 'prompt_version_update' id=item.version.id %}" class="action-link action-link-edit" title="Редактирование">
+                            <i class="fas fa-edit"></i> Редактировать
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+    
+    <!-- Пагинация -->
+    {% if is_paginated %}
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+        <a href="?page=1{% if selected_versions %}{% for v in selected_versions %}&compare={{ v }}{% endfor %}{% endif %}">
+            <i class="fas fa-angle-double-left"></i>
+        </a>
+        <a href="?page={{ page_obj.previous_page_number }}{% if selected_versions %}{% for v in selected_versions %}&compare={{ v }}{% endfor %}{% endif %}">
+            <i class="fas fa-angle-left"></i>
+        </a>
+        {% else %}
+        <span style="opacity: 0.3;"><i class="fas fa-angle-double-left"></i></span>
+        <span style="opacity: 0.3;"><i class="fas fa-angle-left"></i></span>
+        {% endif %}
+        
+        <span class="current">
+            Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}
+        </span>
+        
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if selected_versions %}{% for v in selected_versions %}&compare={{ v }}{% endfor %}{% endif %}">
+            <i class="fas fa-angle-right"></i>
+        </a>
+        <a href="?page={{ page_obj.paginator.num_pages }}{% if selected_versions %}{% for v in selected_versions %}&compare={{ v }}{% endfor %}{% endif %}">
+            <i class="fas fa-angle-double-right"></i>
+        </a>
+        {% else %}
+        <span style="opacity: 0.3;"><i class="fas fa-angle-right"></i></span>
+        <span style="opacity: 0.3;"><i class="fas fa-angle-double-right"></i></span>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <!-- Пустое состояние (если нет версий) -->
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <i class="fas fa-inbox"></i>
+        </div>
+        <h2>Нет версий промптов</h2>
+        <p>Создайте первую версию промпта, чтобы начать работу</p>
+        <a href="{% url 'prompt_version_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Добавить версию
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    // Ограничение выбора максимум 2 версий
+    function updateCompareButton() {
+        const checkboxes = document.querySelectorAll('.version-checkbox:checked');
+        
+        if (checkboxes.length > 2) {
+            // Снимаем выбор с последнего чекбокса
+            checkboxes[checkboxes.length - 1].checked = false;
+            alert('Можно выбрать максимум 2 версии для сравнения');
+            return;
+        }
+        
+        // Сохраняем текущую страницу пагинации
+        const currentUrl = new URL(window.location.href);
+        const currentPage = currentUrl.searchParams.get('page');
+        
+        // Обновляем URL и отправляем форму
+        if (checkboxes.length === 2) {
+            const form = document.getElementById('compareForm');
+            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+            const url = new URL(form.action, window.location.origin);
+            
+            // Сохраняем текущую страницу
+            if (currentPage) {
+                url.searchParams.set('page', currentPage);
+            } else {
+                url.searchParams.delete('page');
+            }
+            
+            // Обновляем параметры compare
+            url.searchParams.delete('compare');
+            selectedIds.forEach(id => url.searchParams.append('compare', id));
+            window.location.href = url.toString();
+        } else if (checkboxes.length === 0) {
+            // Убираем параметры compare из URL, сохраняя страницу
+            const url = new URL(window.location.href);
+            url.searchParams.delete('compare');
+            if (!currentPage) {
+                url.searchParams.delete('page');
+            }
+            window.location.href = url.toString();
+        } else {
+            // Обновляем URL с одним выбранным элементом, сохраняя страницу
+            const form = document.getElementById('compareForm');
+            const selectedId = checkboxes[0].value;
+            const url = new URL(form.action, window.location.origin);
+            
+            // Сохраняем текущую страницу
+            if (currentPage) {
+                url.searchParams.set('page', currentPage);
+            } else {
+                url.searchParams.delete('page');
+            }
+            
+            // Обновляем параметры compare
+            url.searchParams.delete('compare');
+            url.searchParams.append('compare', selectedId);
+            window.location.href = url.toString();
+        }
+    }
+    
+    // Обработчик для "Выбрать все"
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAllCheckbox = document.getElementById('selectAll');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.version-checkbox');
+                const maxSelect = 2;
+                const checkedCount = document.querySelectorAll('.version-checkbox:checked').length;
+                
+                if (this.checked && checkedCount < maxSelect) {
+                    // Выбираем только первые 2, если еще не выбрано 2
+                    let count = 0;
+                    checkboxes.forEach(cb => {
+                        if (!cb.checked && count < maxSelect - checkedCount) {
+                            cb.checked = true;
+                            count++;
+                        }
+                    });
+                    updateCompareButton();
+                } else if (!this.checked) {
+                    // Снимаем все выделения
+                    checkboxes.forEach(cb => cb.checked = false);
+                    updateCompareButton();
+                } else {
+                    this.checked = false;
+                    alert('Можно выбрать максимум 2 версии для сравнения');
+                }
+            });
+        }
+    });
+</script>
+{% endblock extra_js %}
+
