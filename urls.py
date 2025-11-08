@@ -15,6 +15,8 @@ urlpatterns = [
     path('admin/prompt-versions/add/', views.PromptVersionCreateView.as_view(), name='prompt_version_create'),
     # Редактирование версии промпта
     path('admin/prompt-versions/<int:id>/edit/', views.PromptVersionUpdateView.as_view(), name='prompt_version_update'),
+    # Клонирование версии промпта
+    path('admin/prompt-versions/<int:id>/clone/', views.PromptVersionCloneView.as_view(), name='prompt_version_clone'),
     # Детальный просмотр версии промпта
     path('admin/prompt-versions/<int:id>/', views.PromptVersionDetailView.as_view(), name='prompt_version_detail'),
     

@@ -1,4 +1,4 @@
-from django.views.generic import TemplateView, ListView, DetailView, CreateView, UpdateView
+from django.views.generic import TemplateView, ListView, DetailView, CreateView, UpdateView, View
 from django.utils.decorators import method_decorator
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
@@ -324,6 +324,49 @@ class PromptVersionUpdateView(UpdateView):
         context['stats'] = stats
         
         return context
+
+
+@method_decorator(staff_member_required, name='dispatch')
+class PromptVersionCloneView(View):
+    """
+    Представление для клонирования версии промпта.
+    Создает новую версию с копией содержимого и автоматически генерирует описание.
+    """
+    
+    def get(self, request, *args, **kwargs):
+        """
+        Обрабатывает GET запрос для клонирования версии:
+        - Получает оригинальную версию по ID
+        - Создает новую версию с копией содержимого
+        - Автоматически генерирует описание "Клон версии {номер}: {описание}"
+        - Редиректит на страницу редактирования новой версии
+        """
+        # Получаем оригинальную версию
+        original_version = get_object_or_404(PromptVersion, pk=kwargs.get('id'))
+        
+        # Генерируем номер новой версии
+        new_version_number = PromptVersion.get_next_version_number()
+        
+        # Создаем описание для клона
+        clone_description = f'Клон версии {original_version.version_number}: {original_version.description}'
+        
+        # Создаем новую версию с копией содержимого
+        cloned_version = PromptVersion(
+            version_number=new_version_number,
+            description=clone_description,
+            prompt_content=original_version.prompt_content,
+            engineer_name=request.user.get_full_name() or request.user.username,
+        )
+        cloned_version.save()
+        
+        # Уведомление о создании клона
+        messages.success(
+            request,
+            f'Создана копия версии промпта #{original_version.version_number} как версия #{new_version_number}.'
+        )
+        
+        # Редирект на страницу редактирования новой версии
+        return redirect('prompt_version_update', id=cloned_version.id)
 
 
 # ========== ПОДСИСТЕМА GENERATION ==========
