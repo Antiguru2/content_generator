@@ -1,528 +1,569 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <title>Сравнение версий #{{ version1.version_number }} и #{{ version2.version_number }} - Content Generator</title>
+{% extends 'content_generator/base.html' %}
+
+{% block title %}Сравнение версий #{{ version1.version_number }} и #{{ version2.version_number }} - Content Generator{% endblock title %}
+
+{% block extra_css %}
+<style>
+    .compare-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 24px;
+    }
     
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #e9ecef;
+    }
     
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8f9fa;
-            padding: 20px;
-            color: #333;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            padding: 24px;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 2px solid #e9ecef;
-        }
-        
-        .header h1 {
-            font-size: 28px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin: 0;
-        }
-        
-        .header-actions {
-            display: flex;
-            gap: 12px;
-        }
-        
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 124, 186, 0.3);
-        }
-        
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-        
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-        
+    .header h1 {
+        font-size: 28px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .version-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+        color: white;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    
+    .header-actions {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        font-family: inherit;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 124, 186, 0.3);
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+    
+    .version-cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+    
+    .version-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .version-card h2 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .version-info {
+        margin-bottom: 12px;
+    }
+    
+    .version-info:last-child {
+        margin-bottom: 0;
+    }
+    
+    .version-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+    
+    .version-value {
+        font-size: 16px;
+        color: #2c3e50;
+    }
+    
+    .stats-section {
+        margin-bottom: 24px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .stats-section h2 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+    
+    .stat-card {
+        background: white;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        border-color: #007cba;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 124, 186, 0.1);
+    }
+    
+    .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: #007cba;
+        margin-bottom: 8px;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .mode-switcher {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .mode-btn {
+        flex: 1;
+        padding: 12px 24px;
+        border: 2px solid #e9ecef;
+        border-radius: 6px;
+        background: white;
+        color: #2c3e50;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .mode-btn:hover {
+        border-color: #007cba;
+        background: #e7f3ff;
+    }
+    
+    .mode-btn.active {
+        background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+        color: white;
+        border-color: #007cba;
+    }
+    
+    .comparison-container {
+        margin-bottom: 24px;
+    }
+    
+    .comparison-container h2 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    /* Side-by-Side режим */
+    .side-by-side {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .side-by-side-header {
+        background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+        color: white;
+        padding: 12px 16px;
+        font-weight: 600;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .side-by-side-content {
+        max-height: 600px;
+        overflow-y: auto;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        background: white;
+    }
+    
+    .diff-line {
+        padding: 4px 12px;
+        border-bottom: 1px solid #e9ecef;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    .diff-line:last-child {
+        border-bottom: none;
+    }
+    
+    .diff-line.equal {
+        background: white;
+        color: #2c3e50;
+    }
+    
+    .diff-line.delete {
+        background: #ffe6e6;
+        color: #721c24;
+    }
+    
+    .diff-line.insert {
+        background: #e6ffe6;
+        color: #155724;
+    }
+    
+    .diff-line.empty {
+        background: #f8f9fa;
+        min-height: 20px;
+    }
+    
+    /* Unified Diff режим */
+    .unified-diff {
+        background: white;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.8;
+        max-height: 600px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    .unified-diff-line {
+        padding: 2px 0;
+    }
+    
+    .unified-diff-line.header {
+        color: #6c757d;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    
+    .unified-diff-line.added {
+        background: #e6ffe6;
+        color: #155724;
+    }
+    
+    .unified-diff-line.removed {
+        background: #ffe6e6;
+        color: #721c24;
+    }
+    
+    .unified-diff-line.context {
+        color: #2c3e50;
+    }
+    
+    @media (max-width: 1024px) {
         .version-cards {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-            margin-bottom: 24px;
+            grid-template-columns: 1fr;
         }
         
-        .version-card {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            border: 2px solid #e9ecef;
-        }
-        
-        .version-card h2 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #dee2e6;
-        }
-        
-        .version-info {
-            margin-bottom: 12px;
-        }
-        
-        .version-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #6c757d;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
-        
-        .version-value {
-            font-size: 16px;
-            color: #2c3e50;
-        }
-        
-        .mode-switcher {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 24px;
-            padding: 12px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid #e9ecef;
-        }
-        
-        .mode-btn {
-            flex: 1;
-            padding: 12px 24px;
-            border: 2px solid #e9ecef;
-            border-radius: 6px;
-            background: white;
-            color: #2c3e50;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        
-        .mode-btn:hover {
-            border-color: #007cba;
-            background: #e7f3ff;
-        }
-        
-        .mode-btn.active {
-            background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
-            color: white;
-            border-color: #007cba;
-        }
-        
-        .stats-section {
-            margin-bottom: 24px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid #e9ecef;
-        }
-        
-        .stats-section h2 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 16px;
+        .side-by-side {
+            grid-template-columns: 1fr;
         }
         
         .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: 1fr;
+        }
+        
+        .header {
+            flex-direction: column;
+            align-items: flex-start;
             gap: 16px;
         }
         
-        .stat-card {
-            background: white;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            padding: 16px;
-            text-align: center;
-            transition: all 0.3s ease;
+        .header-actions {
+            width: 100%;
+            flex-direction: column;
         }
         
-        .stat-card:hover {
-            border-color: #007cba;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 124, 186, 0.1);
+        .btn {
+            width: 100%;
+            justify-content: center;
         }
-        
-        .stat-value {
-            font-size: 32px;
-            font-weight: 700;
-            color: #007cba;
-            margin-bottom: 8px;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            color: #6c757d;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .comparison-container {
-            margin-bottom: 24px;
-        }
-        
-        .comparison-container h2 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 16px;
-        }
-        
-        /* Side-by-Side режим */
-        .side-by-side {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        .side-by-side-header {
-            background: #007cba;
-            color: white;
-            padding: 12px 16px;
-            font-weight: 600;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .side-by-side-content {
-            max-height: 600px;
-            overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            line-height: 1.6;
-        }
-        
-        .diff-line {
-            padding: 4px 12px;
-            border-bottom: 1px solid #e9ecef;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        
-        .diff-line.equal {
-            background: white;
-        }
-        
-        .diff-line.delete {
-            background: #ffe6e6;
-            color: #721c24;
-            text-decoration: line-through;
-        }
-        
-        .diff-line.insert {
-            background: #e6ffe6;
-            color: #155724;
-        }
-        
-        .diff-line.replace {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .diff-line.empty {
-            background: #f8f9fa;
-            min-height: 20px;
-        }
-        
-        /* Unified Diff режим */
-        .unified-diff {
-            background: #f8f9fa;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            padding: 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            line-height: 1.8;
-            max-height: 600px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        
-        .unified-diff-line {
-            padding: 2px 0;
-        }
-        
-        .unified-diff-line.header {
-            color: #6c757d;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
-        .unified-diff-line.added {
-            background: #e6ffe6;
-            color: #155724;
-        }
-        
-        .unified-diff-line.removed {
-            background: #ffe6e6;
-            color: #721c24;
-        }
-        
-        .unified-diff-line.context {
-            color: #2c3e50;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-        
-        .badge-info {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        
-        @media (max-width: 1024px) {
-            .version-cards {
-                grid-template-columns: 1fr;
-            }
-            
-            .side-by-side {
-                grid-template-columns: 1fr;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 16px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Заголовок с кнопками -->
-        <div class="header">
-            <h1>Сравнение версий промптов</h1>
-            <div class="header-actions">
-                <a href="{% url 'prompt_version_list' %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Назад к списку
+    }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+<div class="compare-container">
+    <!-- Заголовок с информацией о версиях -->
+    <div class="header">
+        <h1>
+            <i class="fas fa-code-branch"></i>
+            Сравнение версий 
+            <span class="version-badge">v{{ version1.version_number }}</span>
+            <span style="margin: 0 8px; color: #6c757d;">и</span>
+            <span class="version-badge">v{{ version2.version_number }}</span>
+        </h1>
+        <div class="header-actions">
+            <a href="{% url 'prompt_version_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Назад к списку
+            </a>
+        </div>
+    </div>
+    
+    <!-- Две карточки с информацией о версиях -->
+    <div class="version-cards">
+        <div class="version-card">
+            <h2>
+                <i class="fas fa-file-alt"></i>
+                Версия #{{ version1.version_number }}
+            </h2>
+            <div class="version-info">
+                <div class="version-label">Описание</div>
+                <div class="version-value">{{ version1.description }}</div>
+            </div>
+            <div class="version-info">
+                <div class="version-label">Инженер</div>
+                <div class="version-value">
+                    <i class="fas fa-user"></i> {{ version1.engineer_name }}
+                </div>
+            </div>
+            <div class="version-info">
+                <div class="version-label">Дата создания</div>
+                <div class="version-value">
+                    <i class="far fa-calendar"></i> {{ version1.created_at|date:"d.m.Y H:i" }}
+                </div>
+            </div>
+            <div class="version-info">
+                <div class="version-label">Строк кода</div>
+                <div class="version-value">
+                    <i class="fas fa-code"></i> {{ stats.total_lines_1 }}
+                </div>
+            </div>
+            <div style="margin-top: 16px;">
+                <a href="{% url 'prompt_version_detail' id=version1.id %}" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-eye"></i> Просмотр версии
                 </a>
             </div>
         </div>
         
-        <!-- Информация о версиях (2 карточки) -->
-        <div class="version-cards">
-            <div class="version-card">
-                <h2>Версия #{{ version1.version_number }}</h2>
-                <div class="version-info">
-                    <div class="version-label">Описание</div>
-                    <div class="version-value">{{ version1.description }}</div>
-                </div>
-                <div class="version-info">
-                    <div class="version-label">Инженер</div>
-                    <div class="version-value">{{ version1.engineer_name }}</div>
-                </div>
-                <div class="version-info">
-                    <div class="version-label">Дата создания</div>
-                    <div class="version-value">{{ version1.created_at|date:"d.m.Y H:i" }}</div>
-                </div>
-                <div class="version-info">
-                    <div class="version-label">Строк</div>
-                    <div class="version-value">{{ stats.total_lines_1 }}</div>
-                </div>
-                <div style="margin-top: 12px;">
-                    <a href="{% url 'prompt_version_detail' id=version1.id %}" class="btn btn-primary" style="width: 100%;">
-                        <i class="fas fa-eye"></i> Просмотр версии
-                    </a>
+        <div class="version-card">
+            <h2>
+                <i class="fas fa-file-alt"></i>
+                Версия #{{ version2.version_number }}
+            </h2>
+            <div class="version-info">
+                <div class="version-label">Описание</div>
+                <div class="version-value">{{ version2.description }}</div>
+            </div>
+            <div class="version-info">
+                <div class="version-label">Инженер</div>
+                <div class="version-value">
+                    <i class="fas fa-user"></i> {{ version2.engineer_name }}
                 </div>
             </div>
-            
-            <div class="version-card">
-                <h2>Версия #{{ version2.version_number }}</h2>
-                <div class="version-info">
-                    <div class="version-label">Описание</div>
-                    <div class="version-value">{{ version2.description }}</div>
-                </div>
-                <div class="version-info">
-                    <div class="version-label">Инженер</div>
-                    <div class="version-value">{{ version2.engineer_name }}</div>
-                </div>
-                <div class="version-info">
-                    <div class="version-label">Дата создания</div>
-                    <div class="version-value">{{ version2.created_at|date:"d.m.Y H:i" }}</div>
-                </div>
-                <div class="version-info">
-                    <div class="version-label">Строк</div>
-                    <div class="version-value">{{ stats.total_lines_2 }}</div>
-                </div>
-                <div style="margin-top: 12px;">
-                    <a href="{% url 'prompt_version_detail' id=version2.id %}" class="btn btn-primary" style="width: 100%;">
-                        <i class="fas fa-eye"></i> Просмотр версии
-                    </a>
+            <div class="version-info">
+                <div class="version-label">Дата создания</div>
+                <div class="version-value">
+                    <i class="far fa-calendar"></i> {{ version2.created_at|date:"d.m.Y H:i" }}
                 </div>
             </div>
-        </div>
-        
-        <!-- Статистика изменений -->
-        <div class="stats-section">
-            <h2>Статистика изменений</h2>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value" style="color: #28a745;">{{ stats.added }}</div>
-                    <div class="stat-label">Добавлено строк</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" style="color: #dc3545;">{{ stats.removed }}</div>
-                    <div class="stat-label">Удалено строк</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" style="color: #ffc107;">{{ stats.changed }}</div>
-                    <div class="stat-label">Изменено строк</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ stats.similarity }}%</div>
-                    <div class="stat-label">Похожесть</div>
+            <div class="version-info">
+                <div class="version-label">Строк кода</div>
+                <div class="version-value">
+                    <i class="fas fa-code"></i> {{ stats.total_lines_2 }}
                 </div>
             </div>
-        </div>
-        
-        <!-- Переключатель режимов -->
-        <div class="mode-switcher">
-            <button class="mode-btn {% if display_mode == 'side-by-side' %}active{% endif %}" 
-                    onclick="switchMode('side-by-side')">
-                <i class="fas fa-columns"></i> Side-by-Side
-            </button>
-            <button class="mode-btn {% if display_mode == 'unified' %}active{% endif %}" 
-                    onclick="switchMode('unified')">
-                <i class="fas fa-code"></i> Unified Diff
-            </button>
-        </div>
-        
-        <!-- Режим Side-by-Side -->
-        {% if display_mode == 'side-by-side' %}
-        <div class="comparison-container">
-            <h2>Сравнение (Side-by-Side)</h2>
-            <div class="side-by-side">
-                <div>
-                    <div class="side-by-side-header">Версия #{{ version1.version_number }}</div>
-                    <div class="side-by-side-content">
-                        {% for line1, line2, tag in comparison.side_by_side %}
-                        <div class="diff-line {{ tag }}">
-                            {% if line1 %}
-                                {{ line1|escape|linebreaksbr }}
-                            {% else %}
-                                <span class="empty"></span>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div>
-                    <div class="side-by-side-header">Версия #{{ version2.version_number }}</div>
-                    <div class="side-by-side-content">
-                        {% for line1, line2, tag in comparison.side_by_side %}
-                        <div class="diff-line {{ tag }}">
-                            {% if line2 %}
-                                {{ line2|escape|linebreaksbr }}
-                            {% else %}
-                                <span class="empty"></span>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
+            <div style="margin-top: 16px;">
+                <a href="{% url 'prompt_version_detail' id=version2.id %}" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-eye"></i> Просмотр версии
+                </a>
             </div>
         </div>
-        {% endif %}
-        
-        <!-- Режим Unified Diff -->
-        {% if display_mode == 'unified' %}
-        <div class="comparison-container">
-            <h2>Сравнение (Unified Diff)</h2>
-            <div class="unified-diff">
-                {% for line in comparison.unified_diff %}
-                <div class="unified-diff-line 
-                    {% if line|slice:':1' == '+' %}added
-                    {% elif line|slice:':1' == '-' %}removed
-                    {% elif line|slice:':2' == '@@' or line|slice:':3' == '---' or line|slice:':3' == '+++' %}header
-                    {% else %}context{% endif %}">
-                    {{ line|escape }}
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
     </div>
     
-    <script>
-        function switchMode(mode) {
-            const url = new URL(window.location.href);
-            url.searchParams.set('mode', mode);
-            window.location.href = url.toString();
-        }
-    </script>
-</body>
-</html>
+    <!-- Статистика изменений (3 метрики) -->
+    <div class="stats-section">
+        <h2>
+            <i class="fas fa-chart-bar"></i>
+            Статистика изменений
+        </h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" style="color: #28a745;">{{ stats.added }}</div>
+                <div class="stat-label">Добавлено строк</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #dc3545;">{{ stats.removed }}</div>
+                <div class="stat-label">Удалено строк</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ stats.similarity|floatformat:1 }}%</div>
+                <div class="stat-label">Похожесть</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Переключатель режимов (Side-by-Side / Unified Diff) -->
+    <div class="mode-switcher">
+        <button class="mode-btn {% if display_mode == 'side-by-side' %}active{% endif %}" 
+                onclick="switchMode('side-by-side')">
+            <i class="fas fa-columns"></i> Side-by-Side
+        </button>
+        <button class="mode-btn {% if display_mode == 'unified' %}active{% endif %}" 
+                onclick="switchMode('unified')">
+            <i class="fas fa-code"></i> Unified Diff
+        </button>
+    </div>
+    
+    <!-- Режим Side-by-Side (2 колонки с подсветкой) -->
+    {% if display_mode == 'side-by-side' %}
+    <div class="comparison-container">
+        <h2>
+            <i class="fas fa-columns"></i>
+            Сравнение (Side-by-Side)
+        </h2>
+        <div class="side-by-side">
+            <div>
+                <div class="side-by-side-header">Версия #{{ version1.version_number }}</div>
+                <div class="side-by-side-content">
+                    {% for line1, line2, tag in comparison.side_by_side %}
+                    <div class="diff-line {{ tag }}">
+                        {% if line1 %}
+                            {{ line1|escape|linebreaksbr }}
+                        {% else %}
+                            <span class="empty"></span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div>
+                <div class="side-by-side-header">Версия #{{ version2.version_number }}</div>
+                <div class="side-by-side-content">
+                    {% for line1, line2, tag in comparison.side_by_side %}
+                    <div class="diff-line {{ tag }}">
+                        {% if line2 %}
+                            {{ line2|escape|linebreaksbr }}
+                        {% else %}
+                            <span class="empty"></span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Режим Unified Diff (единый блок с подсветкой) -->
+    {% if display_mode == 'unified' %}
+    <div class="comparison-container">
+        <h2>
+            <i class="fas fa-code"></i>
+            Сравнение (Unified Diff)
+        </h2>
+        <div class="unified-diff">
+            {% for line in comparison.unified_diff %}
+            <div class="unified-diff-line 
+                {% if line|slice:':1' == '+' %}added
+                {% elif line|slice:':1' == '-' %}removed
+                {% elif line|slice:':2' == '@@' or line|slice:':3' == '---' or line|slice:':3' == '+++' %}header
+                {% else %}context{% endif %}">
+                {{ line|escape }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock content %}
 
+{% block extra_js %}
+<script>
+    function switchMode(mode) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('mode', mode);
+        window.location.href = url.toString();
+    }
+</script>
+{% endblock extra_js %}
