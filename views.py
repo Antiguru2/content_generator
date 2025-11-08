@@ -1,6 +1,4 @@
 from django.views.generic import TemplateView, ListView, DetailView, CreateView, UpdateView, DeleteView, View
-from django.utils.decorators import method_decorator
-from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse
@@ -9,12 +7,12 @@ from django.db.models import Count
 from .models import PromptVersion, GeneratedContent
 from .forms import PromptVersionForm
 from .utils import compare_prompt_versions
+from .permissions import AdminOrEngineerRequiredMixin, AdminRequiredMixin
 
 
 # ========== ПОДСИСТЕМА PROMPTS ==========
 
-@method_decorator(staff_member_required, name='dispatch')
-class PromptVersionListView(ListView):
+class PromptVersionListView(AdminOrEngineerRequiredMixin, ListView):
     """
     Представление для отображения списка версий промптов.
     Включает пагинацию, сортировку и подсчет статистики для каждой версии.
@@ -103,8 +101,7 @@ class PromptVersionListView(ListView):
         return redirect(url)
 
 
-@method_decorator(staff_member_required, name='dispatch')
-class PromptVersionDetailView(DetailView):
+class PromptVersionDetailView(AdminOrEngineerRequiredMixin, DetailView):
     """
     Представление для детального просмотра версии промпта.
     Отображает полную информацию о версии, статистику использования,
@@ -181,8 +178,7 @@ class PromptVersionDetailView(DetailView):
         return context
 
 
-@method_decorator(staff_member_required, name='dispatch')
-class PromptVersionCreateView(CreateView):
+class PromptVersionCreateView(AdminOrEngineerRequiredMixin, CreateView):
     """
     Представление для создания новой версии промпта.
     Автоматически генерирует номер версии и заполняет engineer_name из текущего пользователя.
@@ -225,8 +221,7 @@ class PromptVersionCreateView(CreateView):
         return context
 
 
-@method_decorator(staff_member_required, name='dispatch')
-class PromptVersionUpdateView(UpdateView):
+class PromptVersionUpdateView(AdminOrEngineerRequiredMixin, UpdateView):
     """
     Представление для редактирования версии промпта.
     Реализует логику "умного версионирования":
@@ -329,8 +324,7 @@ class PromptVersionUpdateView(UpdateView):
         return context
 
 
-@method_decorator(staff_member_required, name='dispatch')
-class PromptVersionCloneView(View):
+class PromptVersionCloneView(AdminOrEngineerRequiredMixin, View):
     """
     Представление для клонирования версии промпта.
     Создает новую версию с копией содержимого и автоматически генерирует описание.
@@ -372,8 +366,7 @@ class PromptVersionCloneView(View):
         return redirect('prompt_version_update', id=cloned_version.id)
 
 
-@method_decorator(staff_member_required, name='dispatch')
-class PromptVersionCompareView(TemplateView):
+class PromptVersionCompareView(AdminOrEngineerRequiredMixin, TemplateView):
     """
     Представление для сравнения двух версий промптов.
     Поддерживает два режима отображения: Side-by-Side и Unified Diff.
@@ -413,8 +406,7 @@ class PromptVersionCompareView(TemplateView):
         return context
 
 
-@method_decorator(staff_member_required, name='dispatch')
-class PromptVersionDeleteView(DeleteView):
+class PromptVersionDeleteView(AdminRequiredMixin, DeleteView):
     """
     Представление для удаления версии промпта.
     Проверяет использование версии (если есть GeneratedContent) и запрещает удаление используемых версий.
@@ -516,7 +508,6 @@ class PromptVersionDeleteView(DeleteView):
 
 # ========== ПОДСИСТЕМА GENERATION ==========
 
-@method_decorator(staff_member_required, name='dispatch')
-class ContentGeneratorWidgetView(TemplateView):
+class ContentGeneratorWidgetView(AdminOrEngineerRequiredMixin, TemplateView):
     """Отображает виджет генерации контента в айфрейме без передачи GET-параметров в контекст."""
     template_name = 'custom_admin/content_generator_widget.html'
