@@ -1,0 +1,531 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Версия промпта #{{ version.version_number }} - Content Generator</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            padding: 20px;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 124, 186, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .info-card h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .info-item {
+            margin-bottom: 12px;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .info-value {
+            font-size: 16px;
+            color: #2c3e50;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-top: 16px;
+        }
+        
+        .stat-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            border-color: #007cba;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 124, 186, 0.1);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #007cba;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .rating-distribution {
+            margin-bottom: 24px;
+        }
+        
+        .rating-distribution h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+        }
+        
+        .rating-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+        }
+        
+        .rating-item {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+        
+        .rating-item.active {
+            border-color: #007cba;
+            background: #e7f3ff;
+        }
+        
+        .rating-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #007cba;
+            margin-bottom: 4px;
+        }
+        
+        .rating-count {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        
+        .prompt-section {
+            margin-bottom: 24px;
+        }
+        
+        .prompt-section h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+        }
+        
+        .prompt-content {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #2c3e50;
+        }
+        
+        .content-section {
+            margin-bottom: 24px;
+        }
+        
+        .content-section h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+        }
+        
+        .content-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .content-table thead {
+            background: #007cba;
+            color: white;
+        }
+        
+        .content-table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .content-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 14px;
+        }
+        
+        .content-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .content-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .badge-secondary {
+            background: #e9ecef;
+            color: #495057;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        
+        .empty-state p {
+            font-size: 16px;
+        }
+        
+        @media (max-width: 768px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .rating-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Заголовок с кнопками -->
+        <div class="header">
+            <h1>Версия промпта #{{ version.version_number }}</h1>
+            <div class="header-actions">
+                <a href="{% url 'admin:content_generator_promptversion_change' version.id %}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Редактировать
+                </a>
+                <a href="{% url 'prompt_version_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Назад
+                </a>
+            </div>
+        </div>
+        
+        <!-- Основная информация (2 колонки) -->
+        <div class="info-grid">
+            <!-- Левая колонка: номер, описание, инженер, дата -->
+            <div class="info-card">
+                <h2>Основная информация</h2>
+                <div class="info-item">
+                    <div class="info-label">Номер версии</div>
+                    <div class="info-value">
+                        <span class="badge badge-info">#{{ version.version_number }}</span>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Описание</div>
+                    <div class="info-value">{{ version.description }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Инженер</div>
+                    <div class="info-value">{{ version.engineer_name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Дата создания</div>
+                    <div class="info-value">{{ version.created_at|date:"d.m.Y H:i" }}</div>
+                </div>
+            </div>
+            
+            <!-- Правая колонка: статистика (4 метрики в карточках) -->
+            <div class="info-card">
+                <h2>Статистика использования</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.generated_count }}</div>
+                        <div class="stat-label">Сгенерировано</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.reviewed_count }}</div>
+                        <div class="stat-label">Проверено</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.review_percentage }}%</div>
+                        <div class="stat-label">Процент проверки</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">
+                            {% if stats.average_rating %}
+                                {{ stats.average_rating|floatformat:1 }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </div>
+                        <div class="stat-label">Средний рейтинг</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Распределение оценок (5 колонок, если есть система оценок) -->
+        {% if has_ratings %}
+        <div class="rating-distribution">
+            <h2>Распределение оценок</h2>
+            <div class="rating-grid">
+                {% for rating_value, count in rating_distribution.items %}
+                <div class="rating-item {% if count > 0 %}active{% endif %}">
+                    <div class="rating-value">{{ rating_value }}</div>
+                    <div class="rating-count">
+                        {{ count }} 
+                        {% if count == 1 %}оценка{% elif count >= 2 and count <= 4 %}оценки{% else %}оценок{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Содержимое промпта (моноширинный шрифт, скроллируемый блок) -->
+        <div class="prompt-section">
+            <h2>Содержимое промпта</h2>
+            <div class="prompt-content">{{ version.prompt_content }}</div>
+        </div>
+        
+        <!-- Список связанного контента (таблица, первые 20) -->
+        <div class="content-section">
+            <h2>Связанный сгенерированный контент 
+                {% if generated_content_count > 0 %}
+                    <span style="font-size: 14px; color: #6c757d; font-weight: normal;">
+                        (показано {{ generated_content|length }} из {{ generated_content_count }})
+                    </span>
+                {% endif %}
+            </h2>
+            
+            {% if generated_content %}
+            <table class="content-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Тип объекта</th>
+                        <th>Статус</th>
+                        <th>Дата создания</th>
+                        <th>Дата проверки</th>
+                        <th>Рейтинг</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for content in generated_content %}
+                    <tr>
+                        <td>#{{ content.id }}</td>
+                        <td>
+                            {% if content.content_type %}
+                                {{ content.content_type.model }}
+                            {% else %}
+                                <span style="color: #6c757d;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if content.status == 'SUCCESS' %}
+                                <span class="badge badge-success">{{ content.get_status_display }}</span>
+                            {% elif content.status == 'REVIEWED' %}
+                                <span class="badge badge-info">{{ content.get_status_display }}</span>
+                            {% elif content.status == 'FAILURE' %}
+                                <span class="badge badge-danger">{{ content.get_status_display }}</span>
+                            {% elif content.status == 'PROCESSING' %}
+                                <span class="badge badge-warning">{{ content.get_status_display }}</span>
+                            {% else %}
+                                <span class="badge badge-secondary">{{ content.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ content.created_at|date:"d.m.Y H:i" }}</td>
+                        <td>
+                            {% if content.reviewed_at %}
+                                {{ content.reviewed_at|date:"d.m.Y H:i" }}
+                            {% else %}
+                                <span style="color: #6c757d;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if content.rating %}
+                                <span class="badge badge-info">{{ content.rating }}</span>
+                            {% else %}
+                                <span style="color: #6c757d;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            {% if has_more_content %}
+            <div style="margin-top: 16px; text-align: center; color: #6c757d; font-size: 14px;">
+                <i class="fas fa-info-circle"></i> Показаны первые 20 записей. Всего: {{ generated_content_count }}
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>Нет связанного сгенерированного контента для этой версии промпта.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
+
