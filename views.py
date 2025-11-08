@@ -8,6 +8,7 @@ from django.db.models import Count
 
 from .models import PromptVersion, GeneratedContent
 from .forms import PromptVersionForm
+from .utils import compare_prompt_versions
 
 
 # ========== ПОДСИСТЕМА PROMPTS ==========
@@ -69,9 +70,11 @@ class PromptVersionListView(ListView):
         context['can_compare'] = len(selected_versions) == 2
         
         # URL для сравнения, если выбрано 2 версии
-        # TODO: Будет реализовано в следующем этапе (PromptVersionCompareView)
         if len(selected_versions) == 2:
-            context['compare_url'] = '#'  # Временно, до реализации сравнения
+            context['compare_url'] = reverse('prompt_version_compare', kwargs={
+                'id1': selected_versions[0],
+                'id2': selected_versions[1]
+            })
         
         return context
 
@@ -367,6 +370,47 @@ class PromptVersionCloneView(View):
         
         # Редирект на страницу редактирования новой версии
         return redirect('prompt_version_update', id=cloned_version.id)
+
+
+@method_decorator(staff_member_required, name='dispatch')
+class PromptVersionCompareView(TemplateView):
+    """
+    Представление для сравнения двух версий промптов.
+    Поддерживает два режима отображения: Side-by-Side и Unified Diff.
+    """
+    template_name = 'content_generator/prompt_versions/compare.html'
+    
+    def get_context_data(self, **kwargs):
+        """
+        Добавляет в контекст информацию о двух версиях, результаты сравнения
+        и статистику изменений.
+        """
+        context = super().get_context_data(**kwargs)
+        
+        # Получаем ID версий из URL
+        id1 = self.kwargs.get('id1')
+        id2 = self.kwargs.get('id2')
+        
+        # Получаем объекты версий
+        version1 = get_object_or_404(PromptVersion, pk=id1)
+        version2 = get_object_or_404(PromptVersion, pk=id2)
+        
+        # Выполняем сравнение
+        comparison_result = compare_prompt_versions(
+            version1.prompt_content,
+            version2.prompt_content
+        )
+        
+        # Получаем режим отображения из GET параметров (по умолчанию side-by-side)
+        display_mode = self.request.GET.get('mode', 'side-by-side')
+        
+        context['version1'] = version1
+        context['version2'] = version2
+        context['comparison'] = comparison_result
+        context['display_mode'] = display_mode
+        context['stats'] = comparison_result['stats']
+        
+        return context
 
 
 @method_decorator(staff_member_required, name='dispatch')

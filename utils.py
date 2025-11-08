@@ -2,6 +2,8 @@ import re
 import bs4 
 import json
 import requests
+import difflib
+from typing import Dict, List, Tuple, Any
 
 from django.db import models
 from django.apps import apps
@@ -266,3 +268,93 @@ def get_model_by_name(model_name: str) -> Optional[models.Model]:
         return apps.get_model('store', model_name)
     except LookupError:
         return None
+
+
+# ========== ПОДСИСТЕМА PROMPTS ==========
+
+def compare_prompt_versions(content1: str, content2: str) -> Dict[str, Any]:
+    """
+    Сравнивает две версии промпта и возвращает структурированные данные для отображения.
+    
+    Использует difflib для поиска различий между версиями промптов.
+    Подсчитывает статистику изменений (добавления, удаления, похожесть).
+    
+    Args:
+        content1: Содержимое первой версии промпта
+        content2: Содержимое второй версии промпта
+    
+    Returns:
+        Словарь с ключами:
+        - 'side_by_side': список кортежей (line1, line2, tag) для режима Side-by-Side
+        - 'unified_diff': список строк для режима Unified Diff
+        - 'stats': словарь со статистикой (added, removed, changed, similarity)
+    """
+    # Разбиваем тексты на строки для сравнения (без keepends для чистоты)
+    lines1 = content1.splitlines(keepends=False)
+    lines2 = content2.splitlines(keepends=False)
+    
+    # Используем SequenceMatcher для подсчета похожести
+    matcher = difflib.SequenceMatcher(None, content1, content2)
+    similarity = matcher.ratio() * 100
+    
+    # Создаем diff для режима Side-by-Side
+    side_by_side = []
+    
+    # Обрабатываем opcodes для создания side-by-side представления
+    opcodes = difflib.SequenceMatcher(None, lines1, lines2).get_opcodes()
+    
+    for tag, i1, i2, j1, j2 in opcodes:
+        if tag == 'equal':
+            # Одинаковые строки
+            for i in range(i1, i2):
+                if i < len(lines1):
+                    side_by_side.append((lines1[i], lines1[i], 'equal'))
+        elif tag == 'delete':
+            # Удаленные строки
+            for i in range(i1, i2):
+                if i < len(lines1):
+                    side_by_side.append((lines1[i], '', 'delete'))
+        elif tag == 'insert':
+            # Добавленные строки
+            for j in range(j1, j2):
+                if j < len(lines2):
+                    side_by_side.append(('', lines2[j], 'insert'))
+        elif tag == 'replace':
+            # Замененные строки - показываем все удаленные, затем все добавленные
+            # Сначала удаленные строки
+            for i in range(i1, i2):
+                if i < len(lines1):
+                    side_by_side.append((lines1[i], '', 'delete'))
+            # Затем добавленные строки
+            for j in range(j1, j2):
+                if j < len(lines2):
+                    side_by_side.append(('', lines2[j], 'insert'))
+    
+    # Создаем unified diff для отображения
+    unified_diff_lines = list(difflib.unified_diff(
+        lines1, lines2,
+        fromfile='Версия 1',
+        tofile='Версия 2',
+        lineterm='',
+        n=3
+    ))
+    
+    # Подсчитываем статистику на основе opcodes
+    added_count = sum(j2 - j1 for tag, i1, i2, j1, j2 in opcodes if tag in ('insert', 'replace'))
+    removed_count = sum(i2 - i1 for tag, i1, i2, j1, j2 in opcodes if tag in ('delete', 'replace'))
+    changed_count = sum(1 for tag, i1, i2, j1, j2 in opcodes if tag == 'replace')
+    
+    stats = {
+        'added': added_count,
+        'removed': removed_count,
+        'changed': changed_count,
+        'similarity': round(similarity, 2),
+        'total_lines_1': len(lines1),
+        'total_lines_2': len(lines2),
+    }
+    
+    return {
+        'side_by_side': side_by_side,
+        'unified_diff': unified_diff_lines,
+        'stats': stats,
+    }

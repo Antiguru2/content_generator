@@ -21,6 +21,8 @@ urlpatterns = [
     path('admin/prompt-versions/<int:id>/delete/', views.PromptVersionDeleteView.as_view(), name='prompt_version_delete'),
     # Детальный просмотр версии промпта
     path('admin/prompt-versions/<int:id>/', views.PromptVersionDetailView.as_view(), name='prompt_version_detail'),
+    # Сравнение версий промптов
+    path('admin/prompt-versions/compare/<int:id1>/<int:id2>/', views.PromptVersionCompareView.as_view(), name='prompt_version_compare'),
     
     # Старые endpoints для обратной совместимости
     path('set_seo_params/', api.set_seo_params, name='set_seo_params'),
