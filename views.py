@@ -1,4 +1,4 @@
-from django.views.generic import TemplateView, ListView, DetailView
+from django.views.generic import TemplateView, ListView, DetailView, CreateView
 from django.utils.decorators import method_decorator
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import redirect, get_object_or_404
@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.db.models import Count
 
 from .models import PromptVersion, GeneratedContent
+from .forms import PromptVersionForm
 
 
 # ========== ПОДСИСТЕМА PROMPTS ==========
@@ -173,6 +174,50 @@ class PromptVersionDetailView(DetailView):
             context['generated_content_count'] = 0
             context['has_more_content'] = False
 
+        return context
+
+
+@method_decorator(staff_member_required, name='dispatch')
+class PromptVersionCreateView(CreateView):
+    """
+    Представление для создания новой версии промпта.
+    Автоматически генерирует номер версии и заполняет engineer_name из текущего пользователя.
+    """
+    model = PromptVersion
+    form_class = PromptVersionForm
+    template_name = 'content_generator/prompt_versions/form.html'
+    
+    def get_form_kwargs(self):
+        """
+        Передает текущего пользователя в форму для автоматического заполнения engineer_name.
+        """
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+    
+    def form_valid(self, form):
+        """
+        Обрабатывает валидную форму:
+        - Автоматически генерирует номер версии
+        - Сохраняет объект
+        - Перенаправляет на страницу детального просмотра созданной версии.
+        """
+        # Автоматическая генерация номера версии
+        form.instance.version_number = PromptVersion.get_next_version_number()
+        
+        # Сохраняем объект
+        self.object = form.save()
+        
+        # Редирект на страницу детального просмотра созданной версии
+        return redirect('prompt_version_detail', id=self.object.id)
+    
+    def get_context_data(self, **kwargs):
+        """
+        Добавляет в контекст заголовок страницы.
+        """
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'Создание новой версии промпта'
+        context['is_create'] = True
         return context
 
 

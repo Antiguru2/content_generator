@@ -11,6 +11,8 @@ urlpatterns = [
     # ========== ПОДСИСТЕМА PROMPTS ==========
     # Список версий промптов
     path('admin/prompt-versions/', views.PromptVersionListView.as_view(), name='prompt_version_list'),
+    # Создание новой версии промпта
+    path('admin/prompt-versions/add/', views.PromptVersionCreateView.as_view(), name='prompt_version_create'),
     # Детальный просмотр версии промпта
     path('admin/prompt-versions/<int:id>/', views.PromptVersionDetailView.as_view(), name='prompt_version_detail'),
     
