@@ -8,6 +8,10 @@ urlpatterns = [
     # Виджет для айфрейма
     path('content_generator_widget/', views.ContentGeneratorWidgetView.as_view(), name='content_generator_widget'),
     
+    # ========== ПОДСИСТЕМА PROMPTS ==========
+    # Список версий промптов
+    path('admin/prompt-versions/', views.PromptVersionListView.as_view(), name='prompt_version_list'),
+    
     # Старые endpoints для обратной совместимости
     path('set_seo_params/', api.set_seo_params, name='set_seo_params'),
     path('set_description/', api.set_description, name='set_description'),
