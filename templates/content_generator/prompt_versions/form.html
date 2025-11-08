@@ -1,508 +1,504 @@
+{% extends 'content_generator/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <title>{% if is_create %}Создание новой версии промпта{% else %}Редактирование версии промпта #{{ version.version_number }}{% endif %} - Content Generator</title>
+
+{% block title %}{% if is_create %}Создание новой версии промпта{% else %}Редактирование версии промпта #{{ version.version_number }}{% endif %} - Content Generator{% endblock title %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 24px;
+    }
     
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #e9ecef;
+    }
     
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8f9fa;
-            padding: 20px;
-            color: #333;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            padding: 24px;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 2px solid #e9ecef;
-        }
-        
-        .header h1 {
-            font-size: 28px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin: 0;
-        }
-        
-        .header-actions {
-            display: flex;
-            gap: 12px;
-        }
-        
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 124, 186, 0.3);
-        }
-        
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-        
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-        
-        .alert {
-            padding: 16px 20px;
-            border-radius: 8px;
-            margin-bottom: 24px;
-            border-left: 4px solid;
-        }
-        
-        .alert-info {
-            background: #d1ecf1;
-            border-color: #0c5460;
-            color: #0c5460;
-        }
-        
-        .alert-info i {
-            margin-right: 8px;
-        }
-        
-        .form-group {
-            margin-bottom: 24px;
-        }
-        
-        .form-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 8px;
-        }
-        
-        .form-label .required {
-            color: #dc3545;
-            margin-left: 4px;
-        }
-        
-        .form-help {
-            font-size: 12px;
-            color: #6c757d;
-            margin-top: 4px;
-        }
-        
-        .admin-form-textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e9ecef;
-            border-radius: 6px;
-            font-size: 14px;
-            font-family: 'Courier New', monospace;
-            resize: vertical;
-            transition: border-color 0.3s ease;
-        }
-        
-        .admin-form-textarea:focus {
-            outline: none;
-            border-color: #007cba;
-        }
-        
-        .admin-form-input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e9ecef;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: border-color 0.3s ease;
-        }
-        
-        .admin-form-input:focus {
-            outline: none;
-            border-color: #007cba;
-        }
-        
-        .admin-form-input[readonly] {
-            background-color: #f5f5f5;
-            cursor: not-allowed;
-        }
-        
-        .char-counter {
-            font-size: 12px;
-            color: #6c757d;
-            margin-top: 4px;
-            text-align: right;
-        }
-        
-        .char-counter.warning {
-            color: #ffc107;
-        }
-        
-        .char-counter.danger {
-            color: #dc3545;
-        }
-        
-        .form-actions {
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-            margin-top: 32px;
-            padding-top: 24px;
-            border-top: 2px solid #e9ecef;
-        }
-        
-        .metadata-section {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 24px;
-            border: 1px solid #e9ecef;
-        }
-        
-        .metadata-section h3 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 16px;
-        }
-        
+    .header h1 {
+        font-size: 28px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+    
+    .header-actions {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        font-family: inherit;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #007cba 0%, #005a87 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 124, 186, 0.3);
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+    
+    .btn-clone {
+        background: #17a2b8;
+        color: white;
+    }
+    
+    .btn-clone:hover {
+        background: #138496;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+    }
+    
+    .alert {
+        padding: 16px 20px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+        border-left: 4px solid;
+    }
+    
+    .alert-info {
+        background: #d1ecf1;
+        border-color: #0c5460;
+        color: #0c5460;
+    }
+    
+    .alert-info i {
+        margin-right: 8px;
+    }
+    
+    .form-group {
+        margin-bottom: 24px;
+    }
+    
+    .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 8px;
+    }
+    
+    .form-label .required {
+        color: #dc3545;
+        margin-left: 4px;
+    }
+    
+    .form-help {
+        font-size: 12px;
+        color: #6c757d;
+        margin-top: 4px;
+    }
+    
+    .admin-form-textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e9ecef;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: 'Courier New', monospace;
+        resize: vertical;
+        transition: border-color 0.3s ease;
+    }
+    
+    .admin-form-textarea:focus {
+        outline: none;
+        border-color: #007cba;
+    }
+    
+    .admin-form-input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e9ecef;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s ease;
+    }
+    
+    .admin-form-input:focus {
+        outline: none;
+        border-color: #007cba;
+    }
+    
+    .admin-form-input[readonly] {
+        background-color: #f5f5f5;
+        cursor: not-allowed;
+    }
+    
+    .char-counter {
+        font-size: 12px;
+        color: #6c757d;
+        margin-top: 4px;
+        text-align: right;
+    }
+    
+    .char-counter.warning {
+        color: #ffc107;
+    }
+    
+    .char-counter.danger {
+        color: #dc3545;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 2px solid #e9ecef;
+    }
+    
+    .metadata-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 24px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .metadata-section h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 16px;
+    }
+    
+    .metadata-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+    
+    .metadata-item {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .metadata-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+    
+    .metadata-value {
+        font-size: 14px;
+        color: #2c3e50;
+    }
+    
+    .stats-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 24px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .stats-section h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 16px;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+    }
+    
+    .stat-card {
+        background: white;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #007cba;
+        margin-bottom: 4px;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .error-list {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 16px;
+        color: #721c24;
+    }
+    
+    .error-list ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+    
+    @media (max-width: 768px) {
         .metadata-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-        }
-        
-        .metadata-item {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .metadata-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #6c757d;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
-        
-        .metadata-value {
-            font-size: 14px;
-            color: #2c3e50;
-        }
-        
-        .stats-section {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 24px;
-            border: 1px solid #e9ecef;
-        }
-        
-        .stats-section h3 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 16px;
+            grid-template-columns: 1fr;
         }
         
         .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .header {
+            flex-direction: column;
+            align-items: flex-start;
             gap: 16px;
         }
         
-        .stat-card {
-            background: white;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            padding: 16px;
-            text-align: center;
+        .form-actions {
+            flex-direction: column;
         }
         
-        .stat-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: #007cba;
-            margin-bottom: 4px;
+        .btn {
+            width: 100%;
+            justify-content: center;
         }
-        
-        .stat-label {
-            font-size: 12px;
-            color: #6c757d;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .error-list {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            border-radius: 6px;
-            padding: 12px;
-            margin-bottom: 16px;
-            color: #721c24;
-        }
-        
-        .error-list ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-        
-        @media (max-width: 768px) {
-            .metadata-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 16px;
-            }
-            
-            .form-actions {
-                flex-direction: column;
-            }
-            
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Заголовок -->
-        <div class="header">
-            <h1>{{ page_title }}</h1>
-            <div class="header-actions">
-                <a href="{% if is_create %}{% url 'prompt_version_list' %}{% else %}{% url 'prompt_version_detail' id=version.id %}{% endif %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Отмена
-                </a>
-            </div>
-        </div>
-        
-        <!-- Уведомление об умном версионировании (только при редактировании) -->
-        {% if not is_create %}
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle"></i>
-            <strong>Умное версионирование:</strong> При изменении содержимого промпта будет создана новая версия. 
-            При изменении только описания текущая версия будет обновлена.
-        </div>
-        {% endif %}
-        
-        <!-- Ошибки формы -->
-        {% if form.errors %}
-        <div class="error-list">
-            <strong>Ошибки формы:</strong>
-            <ul>
-                {% for field, errors in form.errors.items %}
-                    {% for error in errors %}
-                        <li>{{ field }}: {{ error }}</li>
-                    {% endfor %}
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
-        
-        <!-- Форма -->
-        <form method="post">
-            {% csrf_token %}
-            
-            <!-- Метаданные (только при редактировании, только для чтения) -->
-            {% if not is_create %}
-            <div class="metadata-section">
-                <h3>Метаданные</h3>
-                <div class="metadata-grid">
-                    <div class="metadata-item">
-                        <div class="metadata-label">Номер версии</div>
-                        <div class="metadata-value">#{{ version.version_number }}</div>
-                    </div>
-                    <div class="metadata-item">
-                        <div class="metadata-label">Дата создания</div>
-                        <div class="metadata-value">{{ version.created_at|date:"d.m.Y H:i" }}</div>
-                    </div>
-                </div>
-            </div>
+    }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+<div class="form-container">
+    <!-- Заголовок -->
+    <div class="header">
+        <h1>
+            {% if is_create %}
+                <i class="fas fa-plus-circle"></i> Создание новой версии промпта
+            {% else %}
+                <i class="fas fa-edit"></i> Редактирование версии промпта #{{ version.version_number }}
             {% endif %}
-            
-            <!-- Поле "Описание версии" -->
-            <div class="form-group">
-                <label for="{{ form.description.id_for_label }}" class="form-label">
-                    {{ form.description.label }}
-                    <span class="required">*</span>
-                </label>
-                {{ form.description }}
-                {% if form.description.help_text %}
-                <div class="form-help">{{ form.description.help_text }}</div>
-                {% endif %}
-                {% if form.description.errors %}
-                <div class="error-list">
-                    {{ form.description.errors }}
-                </div>
-                {% endif %}
-            </div>
-            
-            <!-- Поле "Содержимое промпта" -->
-            <div class="form-group">
-                <label for="{{ form.prompt_content.id_for_label }}" class="form-label">
-                    {{ form.prompt_content.label }}
-                </label>
-                {{ form.prompt_content }}
-                <div class="char-counter" id="char-counter">
-                    <span id="char-count">0</span> / 50000 символов
-                </div>
-                {% if form.prompt_content.help_text %}
-                <div class="form-help">{{ form.prompt_content.help_text }}</div>
-                {% endif %}
-                {% if form.prompt_content.errors %}
-                <div class="error-list">
-                    {{ form.prompt_content.errors }}
-                </div>
-                {% endif %}
-            </div>
-            
-            <!-- Поле "Автор" (только для чтения, серый фон) -->
-            <div class="form-group">
-                <label for="{{ form.engineer_name.id_for_label }}" class="form-label">
-                    {{ form.engineer_name.label }}
-                </label>
-                {{ form.engineer_name }}
-                {% if form.engineer_name.help_text %}
-                <div class="form-help">{{ form.engineer_name.help_text }}</div>
-                {% endif %}
-                {% if form.engineer_name.errors %}
-                <div class="error-list">
-                    {{ form.engineer_name.errors }}
-                </div>
-                {% endif %}
-            </div>
-            
-            <!-- Статистика использования (только при редактировании) -->
-            {% if not is_create and stats %}
-            <div class="stats-section">
-                <h3>Статистика использования</h3>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value">{{ stats.generated_count }}</div>
-                        <div class="stat-label">Сгенерировано</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">{{ stats.reviewed_count }}</div>
-                        <div class="stat-label">Проверено</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">{{ stats.review_percentage }}%</div>
-                        <div class="stat-label">Процент проверки</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">
-                            {% if stats.average_rating %}
-                                {{ stats.average_rating|floatformat:1 }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </div>
-                        <div class="stat-label">Средний рейтинг</div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-            
-            <!-- Кнопки действий -->
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Сохранить
-                </button>
-                <a href="{% if is_create %}{% url 'prompt_version_list' %}{% else %}{% url 'prompt_version_detail' id=version.id %}{% endif %}" class="btn btn-secondary">
-                    <i class="fas fa-times"></i> Отмена
-                </a>
-                {% if not is_create %}
-                <a href="#" class="btn btn-secondary" title="Клонирование будет реализовано в следующем этапе">
-                    <i class="fas fa-copy"></i> Клонировать
-                </a>
-                {% endif %}
-            </div>
-        </form>
+        </h1>
+        <div class="header-actions">
+            <a href="{% if is_create %}{% url 'prompt_version_list' %}{% else %}{% url 'prompt_version_detail' id=version.id %}{% endif %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Отмена
+            </a>
+        </div>
     </div>
     
-    <!-- JavaScript для счетчика символов -->
-    <script src="{% static 'content_generator/js/prompt_version_form.js' %}"></script>
-    <script>
-        // Инициализация счетчика символов при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
-            const textarea = document.getElementById('id_prompt_content');
-            const charCounter = document.getElementById('char-counter');
-            const charCount = document.getElementById('char-count');
-            
-            if (textarea && charCounter && charCount) {
-                // Обновляем счетчик при загрузке
-                updateCharCounter();
+    <!-- Уведомление об умном версионировании (только при редактировании) -->
+    {% if not is_create %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <strong>Умное версионирование:</strong> При изменении содержимого промпта будет создана новая версия. 
+        При изменении только описания текущая версия будет обновлена.
+    </div>
+    {% endif %}
+    
+    <!-- Ошибки формы -->
+    {% if form.errors %}
+    <div class="error-list">
+        <strong>Ошибки формы:</strong>
+        <ul>
+            {% for field, errors in form.errors.items %}
+                {% for error in errors %}
+                    <li>{{ field }}: {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    
+    <!-- Форма -->
+    <form method="post">
+        {% csrf_token %}
+        
+        <!-- Метаданные (только при редактировании, только для чтения) -->
+        {% if not is_create %}
+        <div class="metadata-section">
+            <h3>Метаданные</h3>
+            <div class="metadata-grid">
+                <div class="metadata-item">
+                    <div class="metadata-label">Номер версии</div>
+                    <div class="metadata-value">#{{ version.version_number }}</div>
+                </div>
+                <div class="metadata-item">
+                    <div class="metadata-label">Дата создания</div>
+                    <div class="metadata-value">{{ version.created_at|date:"d.m.Y H:i" }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Поле "Описание версии" (обязательное) -->
+        <div class="form-group">
+            <label for="{{ form.description.id_for_label }}" class="form-label">
+                {{ form.description.label }}
+                <span class="required">*</span>
+            </label>
+            {{ form.description }}
+            {% if form.description.help_text %}
+            <div class="form-help">{{ form.description.help_text }}</div>
+            {% endif %}
+            {% if form.description.errors %}
+            <div class="error-list">
+                {{ form.description.errors }}
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Поле "Содержимое промпта" (textarea, 20 строк, счетчик символов) -->
+        <div class="form-group">
+            <label for="{{ form.prompt_content.id_for_label }}" class="form-label">
+                {{ form.prompt_content.label }}
+            </label>
+            {{ form.prompt_content }}
+            <div class="char-counter" id="char-counter">
+                <span id="char-count">0</span> / 50000 символов
+            </div>
+            {% if form.prompt_content.help_text %}
+            <div class="form-help">{{ form.prompt_content.help_text }}</div>
+            {% endif %}
+            {% if form.prompt_content.errors %}
+            <div class="error-list">
+                {{ form.prompt_content.errors }}
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Поле "Автор" (только для чтения, серый фон) -->
+        <div class="form-group">
+            <label for="{{ form.engineer_name.id_for_label }}" class="form-label">
+                {{ form.engineer_name.label }}
+            </label>
+            {{ form.engineer_name }}
+            {% if form.engineer_name.help_text %}
+            <div class="form-help">{{ form.engineer_name.help_text }}</div>
+            {% endif %}
+            {% if form.engineer_name.errors %}
+            <div class="error-list">
+                {{ form.engineer_name.errors }}
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Статистика использования (только при редактировании) -->
+        {% if not is_create and stats %}
+        <div class="stats-section">
+            <h3>Статистика использования</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.generated_count }}</div>
+                    <div class="stat-label">Сгенерировано</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.reviewed_count }}</div>
+                    <div class="stat-label">Проверено</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.review_percentage|floatformat:1 }}%</div>
+                    <div class="stat-label">Процент проверки</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {% if stats.average_rating %}
+                            {{ stats.average_rating|floatformat:1 }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                    <div class="stat-label">Средний рейтинг</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Кнопки действий (Сохранить, Отмена, Клонировать) -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Сохранить
+            </button>
+            <a href="{% if is_create %}{% url 'prompt_version_list' %}{% else %}{% url 'prompt_version_detail' id=version.id %}{% endif %}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Отмена
+            </a>
+            {% if not is_create %}
+            <a href="{% url 'prompt_version_clone' id=version.id %}" class="btn btn-clone">
+                <i class="fas fa-copy"></i> Клонировать
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    // Инициализация счетчика символов при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        const textarea = document.getElementById('id_prompt_content');
+        const charCounter = document.getElementById('char-counter');
+        const charCount = document.getElementById('char-count');
+        
+        if (textarea && charCounter && charCount) {
+            // Функция обновления счетчика
+            function updateCharCounter() {
+                const length = textarea.value.length;
+                const maxLength = 50000;
                 
-                // Обновляем счетчик при вводе
-                textarea.addEventListener('input', updateCharCounter);
+                charCount.textContent = length.toLocaleString('ru-RU');
                 
-                function updateCharCounter() {
-                    const length = textarea.value.length;
-                    const maxLength = 50000;
-                    
-                    charCount.textContent = length.toLocaleString('ru-RU');
-                    
-                    // Убираем классы
-                    charCounter.classList.remove('warning', 'danger');
-                    
-                    // Добавляем классы в зависимости от длины
-                    if (length > maxLength * 0.9) {
-                        charCounter.classList.add('danger');
-                    } else if (length > maxLength * 0.8) {
-                        charCounter.classList.add('warning');
-                    }
+                // Убираем классы
+                charCounter.classList.remove('warning', 'danger');
+                
+                // Добавляем классы в зависимости от длины
+                if (length > maxLength * 0.9) {
+                    charCounter.classList.add('danger');
+                } else if (length > maxLength * 0.8) {
+                    charCounter.classList.add('warning');
                 }
             }
-        });
-    </script>
-</body>
-</html>
-
+            
+            // Обновляем счетчик при загрузке
+            updateCharCounter();
+            
+            // Обновляем счетчик при вводе
+            textarea.addEventListener('input', updateCharCounter);
+        }
+    });
+</script>
+{% endblock extra_js %}
