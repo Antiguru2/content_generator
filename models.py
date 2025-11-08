@@ -8,6 +8,7 @@ from django.conf import settings
 from django.apps import apps
 from django.contrib.sites.models import Site
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db.models import Avg
@@ -135,4 +136,90 @@ class PromptVersion(models.Model):
 
 
 # ========== ПОДСИСТЕМА GENERATION ==========
+
+class GeneratedContent(models.Model):
+    """
+    Модель сгенерированного контента.
+    Хранит результаты генерации контента с привязкой к версиям промптов и задачам AI.
+    """
+    STATUS_CHOICES = (
+        ('PENDING', 'Ожидает генерации'),
+        ('PROCESSING', 'В процессе генерации'),
+        ('SUCCESS', 'Успешно сгенерирован'),
+        ('FAILURE', 'Ошибка генерации'),
+        ('REVIEWED', 'Проверен'),
+    )
+    
+    prompt_version = models.ForeignKey(
+        'PromptVersion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='generated_content',
+        verbose_name='Версия промпта',
+        help_text='Версия промпта, использованная для генерации'
+    )
+    ai_task = models.ForeignKey(
+        'ai_interface.AITask',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='AI задача',
+        help_text='Задача из ai_interface, связанная с генерацией'
+    )
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        verbose_name='Тип контента',
+        help_text='Тип связанного объекта (Product, Category и т.д.)'
+    )
+    object_id = models.PositiveIntegerField(
+        verbose_name='ID объекта',
+        help_text='ID связанного объекта'
+    )
+    content_object = GenericForeignKey('content_type', 'object_id')
+    generated_data = models.JSONField(
+        verbose_name='Сгенерированные данные',
+        help_text='Данные, сгенерированные AI'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='PENDING',
+        verbose_name='Статус генерации',
+        help_text='Текущий статус процесса генерации'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        verbose_name='Дата создания',
+        help_text='Дата и время создания записи'
+    )
+    reviewed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Дата проверки',
+        help_text='Дата и время проверки сгенерированного контента'
+    )
+    rating = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Рейтинг',
+        help_text='Оценка качества сгенерированного контента (для будущей системы оценок)'
+    )
+
+    class Meta:
+        db_table = 'generated_content'
+        ordering = ['-created_at']
+        verbose_name = 'Сгенерированный контент'
+        verbose_name_plural = 'Сгенерированный контент'
+        indexes = [
+            models.Index(fields=['content_type', 'object_id']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        content_type_name = self.content_type.model if self.content_type else 'Unknown'
+        return f'GeneratedContent #{self.id} ({content_type_name}, статус: {self.get_status_display()})'
 
