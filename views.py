@@ -1,6 +1,7 @@
-from django.views.generic import TemplateView, ListView, DetailView, CreateView
+from django.views.generic import TemplateView, ListView, DetailView, CreateView, UpdateView
 from django.utils.decorators import method_decorator
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse
 from django.db.models import Count
@@ -218,6 +219,110 @@ class PromptVersionCreateView(CreateView):
         context = super().get_context_data(**kwargs)
         context['page_title'] = 'Создание новой версии промпта'
         context['is_create'] = True
+        return context
+
+
+@method_decorator(staff_member_required, name='dispatch')
+class PromptVersionUpdateView(UpdateView):
+    """
+    Представление для редактирования версии промпта.
+    Реализует логику "умного версионирования":
+    - При изменении prompt_content → создание новой версии
+    - При изменении только description → обновление текущей версии
+    """
+    model = PromptVersion
+    form_class = PromptVersionForm
+    template_name = 'content_generator/prompt_versions/form.html'
+    pk_url_kwarg = 'id'
+    context_object_name = 'version'
+    
+    def get_object(self, queryset=None):
+        """
+        Возвращает объект версии промпта по ID из URL.
+        """
+        if queryset is None:
+            queryset = self.get_queryset()
+        pk = self.kwargs.get(self.pk_url_kwarg)
+        return get_object_or_404(queryset, pk=pk)
+    
+    def get_form_kwargs(self):
+        """
+        Передает текущего пользователя в форму для автоматического заполнения engineer_name.
+        """
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+    
+    def form_valid(self, form):
+        """
+        Обрабатывает валидную форму с реализацией "умного версионирования":
+        - Проверяет изменения в prompt_content
+        - Создает новую версию при изменении содержимого
+        - Обновляет текущую версию при изменении только описания
+        - Показывает уведомления пользователю о действиях
+        """
+        # Получаем оригинальный объект из базы данных до изменений
+        original_obj = PromptVersion.objects.get(pk=self.object.pk)
+        original_prompt_content = original_obj.prompt_content
+        new_prompt_content = form.cleaned_data.get('prompt_content', '')
+        new_description = form.cleaned_data.get('description', '')
+        new_engineer_name = form.cleaned_data.get('engineer_name', '')
+        
+        # Проверяем, изменилось ли содержимое промпта
+        if original_prompt_content != new_prompt_content:
+            # Создаем новую версию при изменении содержимого
+            new_version_number = PromptVersion.get_next_version_number()
+            new_version = PromptVersion(
+                version_number=new_version_number,
+                description=new_description,
+                prompt_content=new_prompt_content,
+                engineer_name=new_engineer_name,
+            )
+            new_version.save()
+            
+            # Уведомление о создании новой версии
+            messages.success(
+                self.request,
+                f'Создана новая версия промпта #{new_version_number}: "{new_description[:50]}". '
+                f'Старая версия #{original_obj.version_number} сохранена без изменений.'
+            )
+            
+            # Редирект на страницу детального просмотра новой версии
+            return redirect('prompt_version_detail', id=new_version.id)
+        else:
+            # Обновляем только описание текущей версии
+            original_obj.description = new_description
+            original_obj.engineer_name = new_engineer_name
+            original_obj.save()
+            
+            # Уведомление об обновлении текущей версии
+            messages.info(
+                self.request,
+                f'Версия промпта #{original_obj.version_number} обновлена (изменено только описание).'
+            )
+            
+            # Редирект на страницу детального просмотра обновленной версии
+            return redirect('prompt_version_detail', id=original_obj.id)
+    
+    def get_context_data(self, **kwargs):
+        """
+        Добавляет в контекст заголовок страницы, информацию о версии и статистику.
+        """
+        context = super().get_context_data(**kwargs)
+        version = context['version']
+        
+        context['page_title'] = f'Редактирование версии промпта #{version.version_number}'
+        context['is_create'] = False
+        
+        # Статистика использования (для отображения в форме)
+        stats = {
+            'generated_count': version.get_generated_content_count(),
+            'reviewed_count': version.get_reviewed_content_count(),
+            'review_percentage': version.get_review_percentage(),
+            'average_rating': version.get_average_rating(),
+        }
+        context['stats'] = stats
+        
         return context
 
 
