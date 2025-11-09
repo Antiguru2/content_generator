@@ -57,15 +57,24 @@ class PromptVersionAdmin(admin.ModelAdmin):
         """
         Передает текущего пользователя в форму для автоматического заполнения engineer_name.
         """
-        if 'form' not in kwargs:
-            kwargs['form'] = PromptVersionForm
+        # Извлекаем form_kwargs из kwargs, чтобы не передавать их в modelform_factory
+        form_kwargs = kwargs.pop('form_kwargs', {})
+        print('form_kwargs', form_kwargs)
+        form_kwargs['user'] = request.user
         
-        # Передаем user в форму через form_kwargs
-        if 'form_kwargs' not in kwargs:
-            kwargs['form_kwargs'] = {}
-        kwargs['form_kwargs']['user'] = request.user
+        # Получаем класс формы
+        form_class = super().get_form(request, obj, **kwargs)
         
-        return super().get_form(request, obj, **kwargs)
+        # Создаем обертку, которая будет передавать form_kwargs при создании экземпляра
+        class FormWithUser(form_class):
+            def __init__(self, *args, **init_kwargs):
+                init_kwargs.update(form_kwargs)
+                super().__init__(*args, **init_kwargs)
+        
+        FormWithUser.__name__ = form_class.__name__
+        FormWithUser.__module__ = form_class.__module__
+        
+        return FormWithUser
 
     def save_model(self, request, obj, form, change):
         """

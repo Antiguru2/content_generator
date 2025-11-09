@@ -294,65 +294,84 @@ def compare_prompt_versions(content1: str, content2: str, max_lines: int = 10000
     lines2 = content2.splitlines(keepends=False)
     
     # Оптимизация для больших промптов: ограничиваем обработку
+    # Сохраняем оригинальные размеры для статистики
     truncated = False
     original_lines1_count = len(lines1)
     original_lines2_count = len(lines2)
     
+    # Если промпты слишком большие, обрезаем их для ускорения обработки
+    # Это позволяет обрабатывать очень большие промпты без зависания
     if len(lines1) > max_lines or len(lines2) > max_lines:
         truncated = True
         # Для больших промптов используем только первые max_lines строк
+        # Это компромисс между точностью и производительностью
         lines1 = lines1[:max_lines]
         lines2 = lines2[:max_lines]
         # Пересоздаем содержимое для подсчета похожести
+        # (нужно для SequenceMatcher, который работает со строками)
         content1_truncated = '\n'.join(lines1)
         content2_truncated = '\n'.join(lines2)
     else:
+        # Для небольших промптов используем оригинальное содержимое
         content1_truncated = content1
         content2_truncated = content2
     
     # Используем SequenceMatcher для подсчета похожести
-    # Для очень больших текстов используем быстрый режим
+    # Для очень больших текстов (более 100000 символов) используем быстрый режим
+    # с игнорированием пробелов и табов для ускорения
     if len(content1_truncated) + len(content2_truncated) > 100000:
         # Используем isjunk для ускорения на больших текстах
+        # Игнорируем пробелы и табы, так как они не влияют на смысл при сравнении
         matcher = difflib.SequenceMatcher(
             lambda x: x in ' \t',  # Игнорируем пробелы и табы
             content1_truncated,
             content2_truncated
         )
     else:
+        # Для небольших текстов используем полное сравнение без оптимизаций
         matcher = difflib.SequenceMatcher(None, content1_truncated, content2_truncated)
     
     similarity = matcher.ratio() * 100
     
     # Создаем diff для режима Side-by-Side
+    # Структура: список кортежей (line1, line2, tag), где:
+    # - line1: строка из первой версии (или пустая строка)
+    # - line2: строка из второй версии (или пустая строка)
+    # - tag: тип изменения ('equal', 'delete', 'insert', 'replace')
     side_by_side = []
     
     # Обрабатываем opcodes для создания side-by-side представления
+    # opcodes - это список кортежей (tag, i1, i2, j1, j2), описывающих изменения:
+    # - tag: тип изменения ('equal', 'delete', 'insert', 'replace')
+    # - i1, i2: индексы строк в первой версии
+    # - j1, j2: индексы строк во второй версии
     opcodes = difflib.SequenceMatcher(None, lines1, lines2).get_opcodes()
     
+    # Обрабатываем каждый opcode для построения side-by-side представления
     for tag, i1, i2, j1, j2 in opcodes:
         if tag == 'equal':
-            # Одинаковые строки
+            # Одинаковые строки - показываем в обеих колонках
             for i in range(i1, i2):
                 if i < len(lines1):
                     side_by_side.append((lines1[i], lines1[i], 'equal'))
         elif tag == 'delete':
-            # Удаленные строки
+            # Удаленные строки - показываем только в первой колонке
             for i in range(i1, i2):
                 if i < len(lines1):
                     side_by_side.append((lines1[i], '', 'delete'))
         elif tag == 'insert':
-            # Добавленные строки
+            # Добавленные строки - показываем только во второй колонке
             for j in range(j1, j2):
                 if j < len(lines2):
                     side_by_side.append(('', lines2[j], 'insert'))
         elif tag == 'replace':
             # Замененные строки - показываем все удаленные, затем все добавленные
-            # Сначала удаленные строки
+            # Это позволяет видеть полную картину изменений
+            # Сначала удаленные строки (из первой версии)
             for i in range(i1, i2):
                 if i < len(lines1):
                     side_by_side.append((lines1[i], '', 'delete'))
-            # Затем добавленные строки
+            # Затем добавленные строки (из второй версии)
             for j in range(j1, j2):
                 if j < len(lines2):
                     side_by_side.append(('', lines2[j], 'insert'))
@@ -430,18 +449,21 @@ def get_prompt_statistics(prompt_version) -> Dict[str, Any]:
             }
         
         # Оптимизированный запрос с использованием aggregate
+        # Используем один запрос для подсчета всех метрик вместо множественных запросов
+        # Это значительно ускоряет работу при большом количестве записей
         from django.db.models import Count, Avg, Q
         
         queryset = GeneratedContent.objects.filter(prompt_version=prompt_version)
         
-        # Подсчитываем все метрики одним запросом
+        # Подсчитываем все метрики одним запросом с использованием aggregate
+        # Каждая метрика вычисляется с помощью фильтров (Q objects) для точности
         stats = queryset.aggregate(
-            generated_count=Count('id'),
-            reviewed_count=Count('id', filter=Q(reviewed_at__isnull=False)),
-            success_count=Count('id', filter=Q(status='SUCCESS')),
-            failure_count=Count('id', filter=Q(status='FAILURE')),
-            pending_count=Count('id', filter=Q(status__in=['PENDING', 'PROCESSING'])),
-            average_rating=Avg('rating', filter=Q(rating__isnull=False)),
+            generated_count=Count('id'),  # Общее количество записей
+            reviewed_count=Count('id', filter=Q(reviewed_at__isnull=False)),  # Проверенные записи
+            success_count=Count('id', filter=Q(status='SUCCESS')),  # Успешные генерации
+            failure_count=Count('id', filter=Q(status='FAILURE')),  # Неудачные генерации
+            pending_count=Count('id', filter=Q(status__in=['PENDING', 'PROCESSING'])),  # Ожидающие генерации
+            average_rating=Avg('rating', filter=Q(rating__isnull=False)),  # Средний рейтинг (только для оцененных)
         )
         
         # Вычисляем процент проверенного контента

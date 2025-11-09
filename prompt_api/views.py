@@ -17,7 +17,7 @@ from content_generator.serializers import (
     PromptVersionUpdateSerializer,
 )
 from content_generator.utils import compare_prompt_versions
-from content_generator.api.permissions import AdminOrEngineerPermission, AdminPermission
+from content_generator.prompt_api.permissions import AdminOrEngineerPermission, AdminPermission
 
 
 # ========== ПОДСИСТЕМА PROMPTS ==========

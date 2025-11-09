@@ -1,6 +1,6 @@
 from django.urls import path, include
-from content_generator import api
-from content_generator import views
+from . import api
+from . import views
 
 urlpatterns = [
     # Новый унифицированный endpoint
@@ -26,7 +26,7 @@ urlpatterns = [
     
     # ========== API ПОДСИСТЕМА PROMPTS ==========
     # REST API для версий промптов
-    path('api/', include('content_generator.api.urls')),
+    path('api/', include('content_generator.prompt_api.urls')),
     
     # Старые endpoints для обратной совместимости
     path('set_seo_params/', api.set_seo_params, name='set_seo_params'),

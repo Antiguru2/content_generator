@@ -169,18 +169,25 @@ def execute_generation_action(model_instance, action, additional_prompt=''):
     """
     Выполняет действие генерации для модели.
     
+    Вызывает соответствующий метод модели на основе действия.
+    Некоторые действия (например, set_some_params) поддерживают дополнительный промпт.
+    
     Args:
-        model_instance: Экземпляр модели
-        action: Название действия
-        additional_prompt: Дополнительный промпт
+        model_instance: Экземпляр модели (Product, Category и т.д.)
+        action: Название действия (set_seo_params, set_description, upgrade_name, set_some_params)
+        additional_prompt: Дополнительный промпт от пользователя (используется для set_some_params)
     """
+    # Получаем имя метода из словаря маппинга действий
     method_name = ACTION_METHODS[action]
+    # Получаем метод модели через рефлексию
     method = getattr(model_instance, method_name)
     
-    # Для действий, поддерживающих дополнительный промпт
+    # Для действий, поддерживающих дополнительный промпт (например, set_some_params)
+    # передаем additional_prompt как аргумент
     if action in ['set_some_params'] and additional_prompt:
         method(additional_prompt)
     else:
+        # Для остальных действий вызываем метод без аргументов
         method()
 
 
