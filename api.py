@@ -9,8 +9,9 @@ from django.shortcuts import render, redirect, HttpResponse
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.shortcuts import get_current_site
 
-from content_generator.models import PromptVersion
+from content_generator.models import PromptVersion, Prompt
 from content_generator.ai_interface_adapter import create_generation_task
+from content_generator.utils import get_prompt_for_action, ACTION_TO_PROMPT_TYPE
 
 
 # Словарь для маппинга действий на методы
@@ -19,6 +20,7 @@ ACTION_METHODS = {
     'set_description': 'set_description', 
     'upgrade_name': 'upgrade_name',
     'set_some_params': 'set_some_params',
+    'update_html_constructor': 'update_html_constructor',
     # 'change_img': 'get_images_by_text',  # TODO: реализовать
 }
 
@@ -39,9 +41,10 @@ def generate(request):
     Возвращает:
         JSON: { "status": "ok", "task_id": <id> } или { "status": "error", "message": <error> }
     """
+    print('generate')
     try:
         # Получаем параметры
-        class_name = request.GET.get('class_name')
+        natural_key = request.GET.get('natural_key')
         model_id = request.GET.get('model_id')
         action = request.GET.get('action')
         prompt_version_id = request.GET.get('prompt_version_id')
@@ -49,7 +52,7 @@ def generate(request):
         async_mode = request.GET.get('async_mode', 'false').lower() == 'true'
         
         # Валидация
-        if not class_name or not model_id or not action:
+        if not natural_key or not model_id or not action:
             return JsonResponse({
                 'status': 'error',
                 'message': 'Отсутствуют обязательные параметры: class_name, model_id, action'
@@ -63,12 +66,12 @@ def generate(request):
         
         # Получаем модель и объект
         try:
-            Model = apps.get_model('store', class_name)
+            Model = apps.get_model(natural_key)
             model_instance = get_object_or_404(Model, id=model_id)
         except LookupError:
             return JsonResponse({
                 'status': 'error',
-                'message': f'Модель {class_name} не найдена'
+                'message': f'Модель {natural_key} не найдена'
             }, status=404)
         except Exception as e:
             return JsonResponse({
@@ -81,7 +84,7 @@ def generate(request):
         if not hasattr(model_instance, method_name):
             return JsonResponse({
                 'status': 'error',
-                'message': f'Модель {class_name} не поддерживает действие {action}'
+                'message': f'Модель {natural_key} не поддерживает действие {action}'
             }, status=400)
         
         # Получаем версию промпта
@@ -95,12 +98,13 @@ def generate(request):
                     'message': f'Версия промпта с ID {prompt_version_id} не найдена'
                 }, status=404)
         else:
-            # Используем последнюю версию, если не указана
-            prompt_version = PromptVersion.get_latest_version()
+            # Используем промпт для конкретного действия
+            prompt_version = get_prompt_for_action(action)
             if not prompt_version:
+                prompt_type = ACTION_TO_PROMPT_TYPE.get(action, 'unknown')
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'Не найдено ни одной версии промпта. Создайте версию промпта перед генерацией.'
+                    'message': f'Не найден активный промпт для действия "{action}" (тип: {prompt_type}). Создайте промпт и его версию перед генерацией.'
                 }, status=404)
         
         # Если асинхронный режим - создаем задачу через ai_interface

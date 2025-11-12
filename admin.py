@@ -3,11 +3,61 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.contrib import messages
 
-from .models import PromptVersion
+from .models import Prompt, PromptVersion
 from .forms import PromptVersionForm
 
 
 # ========== ПОДСИСТЕМА PROMPTS ==========
+
+@admin.register(Prompt)
+class PromptAdmin(admin.ModelAdmin):
+    """
+    Административный интерфейс для управления типами промптов.
+    """
+    list_display = (
+        'prompt_type',
+        'name',
+        'is_active',
+        'get_versions_count',
+        'created_at',
+    )
+    list_filter = (
+        'is_active',
+        'prompt_type',
+        'created_at',
+    )
+    search_fields = (
+        'name',
+        'description',
+        'prompt_type',
+    )
+    readonly_fields = (
+        'created_at',
+        'updated_at',
+    )
+    ordering = ('prompt_type',)
+
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('prompt_type', 'name', 'description', 'is_active')
+        }),
+        ('Метаданные', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def get_versions_count(self, obj):
+        """
+        Отображает количество версий промпта.
+        """
+        count = obj.get_versions_count()
+        return format_html(
+            '<strong>{}</strong>',
+            count
+        )
+    get_versions_count.short_description = 'Версий'
+
 
 @admin.register(PromptVersion)
 class PromptVersionAdmin(admin.ModelAdmin):
@@ -19,6 +69,7 @@ class PromptVersionAdmin(admin.ModelAdmin):
     """
     form = PromptVersionForm
     list_display = (
+        'prompt',
         'version_number',
         'description',
         'engineer_name',
@@ -26,6 +77,7 @@ class PromptVersionAdmin(admin.ModelAdmin):
         'get_statistics_display',
     )
     list_filter = (
+        'prompt',
         'created_at',
         'engineer_name',
     )
@@ -33,6 +85,8 @@ class PromptVersionAdmin(admin.ModelAdmin):
         'description',
         'prompt_content',
         'engineer_name',
+        'prompt__name',
+        'prompt__prompt_type',
     )
     readonly_fields = (
         'version_number',
@@ -42,7 +96,7 @@ class PromptVersionAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Основная информация', {
-            'fields': ('version_number', 'description', 'engineer_name', 'created_at')
+            'fields': ('prompt', 'version_number', 'description', 'engineer_name', 'created_at')
         }),
         ('Содержимое промпта', {
             'fields': ('prompt_content',),
@@ -87,12 +141,13 @@ class PromptVersionAdmin(admin.ModelAdmin):
         if not change:
             # Создание новой версии
             if not obj.version_number:
-                obj.version_number = PromptVersion.get_next_version_number()
+                obj.version_number = PromptVersion.get_next_version_number_for_prompt(obj.prompt)
             obj.engineer_name = form.cleaned_data.get('engineer_name', '')
             super().save_model(request, obj, form, change)
+            prompt_name = obj.prompt.get_prompt_type_display() if obj.prompt else 'Unknown'
             messages.success(
                 request,
-                f'Создана новая версия промпта #{obj.version_number}: "{obj.description[:50]}"'
+                f'Создана новая версия промпта "{prompt_name}" #{obj.version_number}: "{obj.description[:50]}"'
             )
         else:
             # Редактирование существующей версии
@@ -103,8 +158,9 @@ class PromptVersionAdmin(admin.ModelAdmin):
             # Проверяем, изменилось ли содержимое промпта
             if original_prompt_content != new_prompt_content:
                 # Создаем новую версию
-                new_version_number = PromptVersion.get_next_version_number()
+                new_version_number = PromptVersion.get_next_version_number_for_prompt(obj.prompt)
                 new_version = PromptVersion(
+                    prompt=obj.prompt,
                     version_number=new_version_number,
                     description=form.cleaned_data.get('description', ''),
                     prompt_content=new_prompt_content,

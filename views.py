@@ -4,7 +4,7 @@ from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse
 from django.db.models import Count
 
-from .models import PromptVersion, GeneratedContent
+from .models import Prompt, PromptVersion, GeneratedContent
 from .forms import PromptVersionForm
 from .utils import compare_prompt_versions
 from .permissions import AdminOrEngineerRequiredMixin, AdminRequiredMixin
@@ -202,8 +202,12 @@ class PromptVersionCreateView(AdminOrEngineerRequiredMixin, CreateView):
         - Сохраняет объект
         - Перенаправляет на страницу детального просмотра созданной версии.
         """
-        # Автоматическая генерация номера версии
-        form.instance.version_number = PromptVersion.get_next_version_number()
+        # Автоматическая генерация номера версии для конкретного промпта
+        if form.instance.prompt:
+            form.instance.version_number = PromptVersion.get_next_version_number_for_prompt(form.instance.prompt)
+        else:
+            # Fallback для обратной совместимости (не должно происходить при валидной форме)
+            form.instance.version_number = 1
         
         # Сохраняем объект
         self.object = form.save()
@@ -269,8 +273,9 @@ class PromptVersionUpdateView(AdminOrEngineerRequiredMixin, UpdateView):
         # Проверяем, изменилось ли содержимое промпта
         if original_prompt_content != new_prompt_content:
             # Создаем новую версию при изменении содержимого
-            new_version_number = PromptVersion.get_next_version_number()
+            new_version_number = PromptVersion.get_next_version_number_for_prompt(original_obj.prompt)
             new_version = PromptVersion(
+                prompt=original_obj.prompt,
                 version_number=new_version_number,
                 description=new_description,
                 prompt_content=new_prompt_content,
@@ -341,14 +346,15 @@ class PromptVersionCloneView(AdminOrEngineerRequiredMixin, View):
         # Получаем оригинальную версию
         original_version = get_object_or_404(PromptVersion, pk=kwargs.get('id'))
         
-        # Генерируем номер новой версии
-        new_version_number = PromptVersion.get_next_version_number()
+        # Генерируем номер новой версии для того же промпта
+        new_version_number = PromptVersion.get_next_version_number_for_prompt(original_version.prompt)
         
         # Создаем описание для клона
         clone_description = f'Клон версии {original_version.version_number}: {original_version.description}'
         
         # Создаем новую версию с копией содержимого
         cloned_version = PromptVersion(
+            prompt=original_version.prompt,
             version_number=new_version_number,
             description=clone_description,
             prompt_content=original_version.prompt_content,

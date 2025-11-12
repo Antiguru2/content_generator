@@ -251,7 +251,7 @@ def set_some_params_of_model(model, additional_prompt=None):
             title=response_data.get('title'),
             description=response_data.get('description'),
         )
-            
+     
 
 def get_additional_header_elements():
     """Возвращает дополнительные элементы для заголовка"""
@@ -268,6 +268,49 @@ def get_model_by_name(model_name: str) -> Optional[models.Model]:
 
 
 # ========== ПОДСИСТЕМА PROMPTS ==========
+
+# Маппинг действий на типы промптов
+ACTION_TO_PROMPT_TYPE = {
+    'set_seo_params': 'seo',
+    'set_description': 'product_description',
+    'upgrade_name': 'product_name',
+    'set_some_params': 'complex_params',
+    'update_html_constructor': 'html_block',
+    # Для будущих действий можно добавить:
+    # 'generate_article': 'article',
+    # 'assemble_page': 'page_assembly',
+}
+
+
+def get_prompt_for_action(action: str) -> Optional['PromptVersion']:
+    """
+    Получает актуальную версию промпта для указанного действия.
+    
+    Args:
+        action: Название действия (set_seo_params, set_description, etc.)
+    
+    Returns:
+        PromptVersion или None, если промпт не найден
+    """
+    from content_generator.models import Prompt, PromptVersion
+    
+    prompt_type = ACTION_TO_PROMPT_TYPE.get(action)
+    if not prompt_type:
+        return None
+    
+    try:
+        prompt = Prompt.objects.filter(
+            prompt_type=prompt_type,
+            is_active=True
+        ).first()
+        
+        if not prompt:
+            return None
+        
+        return prompt.get_latest_version()
+    except Exception:
+        return None
+
 
 def compare_prompt_versions(content1: str, content2: str, max_lines: int = 10000) -> Dict[str, Any]:
     """
@@ -695,3 +738,4 @@ def process_generation_result(ai_task) -> Optional[Dict[str, Any]]:
             'status': 'error',
             'message': str(e)
         }
+

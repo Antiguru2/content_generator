@@ -18,16 +18,99 @@ User = get_user_model()
 
 # ========== ПОДСИСТЕМА PROMPTS ==========
 
-class PromptVersion(models.Model):
+class Prompt(models.Model):
     """
-    Модель версии промпта для генерации контента.
-    Хранит версии промптов с возможностью отслеживания статистики использования.
+    Тип промпта для генерации контента.
+    Определяет назначение промпта (SEO, описание товара, статья и т.д.).
     """
-    version_number = models.IntegerField(
+    PROMPT_TYPE_CHOICES = (
+        ('product_description', 'Описание товара'),
+        ('article', 'Статья'),
+        ('seo', 'SEO контент'),
+        ('html_block', 'HTML блок'),
+        ('page_assembly', 'Сборка страницы'),
+        ('product_name', 'Название товара'),
+        ('complex_params', 'Комплексные параметры'),
+    )
+    
+    prompt_type = models.CharField(
+        max_length=50,
+        choices=PROMPT_TYPE_CHOICES,
         unique=True,
         db_index=True,
+        verbose_name='Тип промпта',
+        help_text='Тип промпта определяет его назначение'
+    )
+    name = models.CharField(
+        max_length=200,
+        verbose_name='Название',
+        help_text='Человекочитаемое название промпта'
+    )
+    description = models.TextField(
+        blank=True,
+        verbose_name='Описание',
+        help_text='Описание назначения промпта'
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        verbose_name='Активен',
+        help_text='Используется ли промпт по умолчанию'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        verbose_name='Дата создания',
+        help_text='Дата и время создания промпта'
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Дата обновления',
+        help_text='Дата и время последнего обновления'
+    )
+
+    class Meta:
+        db_table = 'prompts'
+        ordering = ['prompt_type']
+        verbose_name = 'Промпт'
+        verbose_name_plural = 'Промпты'
+        indexes = [
+            models.Index(fields=['prompt_type']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        return f'{self.get_prompt_type_display()}: {self.name}'
+
+    def get_latest_version(self):
+        """
+        Возвращает последнюю версию промпта.
+        """
+        return self.versions.order_by('-version_number').first()
+
+    def get_versions_count(self):
+        """
+        Возвращает количество версий промпта.
+        """
+        return self.versions.count()
+
+
+class PromptVersion(models.Model):
+    """
+    Версия конкретного промпта для генерации контента.
+    Хранит версии промптов с возможностью отслеживания статистики использования.
+    """
+    prompt = models.ForeignKey(
+        'Prompt',
+        on_delete=models.CASCADE,
+        related_name='versions',
+        verbose_name='Промпт',
+        help_text='Тип промпта, к которому относится версия'
+    )
+    version_number = models.IntegerField(
+        db_index=True,
         verbose_name='Номер версии',
-        help_text='Уникальный номер версии промпта'
+        help_text='Номер версии в рамках конкретного промпта'
     )
     description = models.TextField(
         verbose_name='Описание версии',
@@ -55,13 +138,15 @@ class PromptVersion(models.Model):
         ordering = ['-version_number']
         verbose_name = 'Версия промпта'
         verbose_name_plural = 'Версии промптов'
+        unique_together = [['prompt', 'version_number']]
         indexes = [
-            models.Index(fields=['version_number']),
+            models.Index(fields=['prompt', 'version_number']),
             models.Index(fields=['created_at']),
         ]
 
     def __str__(self):
-        return f'Версия {self.version_number}: {self.description[:50]}'
+        prompt_name = self.prompt.get_prompt_type_display() if self.prompt else 'Unknown'
+        return f'{prompt_name} - Версия {self.version_number}: {self.description[:50]}'
 
     def get_generated_content_count(self):
         """
@@ -118,18 +203,36 @@ class PromptVersion(models.Model):
         return round((reviewed_count / generated_count) * 100, 2)
 
     @classmethod
-    def get_latest_version(cls):
+    def get_latest_version(cls, prompt=None):
         """
         Класс-метод для получения последней версии промпта.
+        
+        Args:
+            prompt: Экземпляр Prompt или None. Если None, возвращает последнюю версию любого промпта.
         """
-        return cls.objects.order_by('-version_number').first()
+        queryset = cls.objects.all()
+        if prompt:
+            queryset = queryset.filter(prompt=prompt)
+        return queryset.order_by('-version_number').first()
+
+    def get_next_version_number(self):
+        """
+        Возвращает следующий номер версии для данного промпта.
+        """
+        latest = self.prompt.versions.order_by('-version_number').first()
+        if latest:
+            return latest.version_number + 1
+        return 1
 
     @classmethod
-    def get_next_version_number(cls):
+    def get_next_version_number_for_prompt(cls, prompt):
         """
-        Класс-метод для получения следующего номера версии.
+        Класс-метод для получения следующего номера версии для конкретного промпта.
+        
+        Args:
+            prompt: Экземпляр Prompt
         """
-        latest = cls.objects.order_by('-version_number').first()
+        latest = prompt.versions.order_by('-version_number').first()
         if latest:
             return latest.version_number + 1
         return 1

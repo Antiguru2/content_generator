@@ -103,9 +103,21 @@ class ImageGeneratorMixin():
     #     return mark_safe(f"<a id='anchor_pictures' href='/change_img/?good_id={self.id}'><input type='button' value='Выбрать картинку из яндекс картинок'></a>")          
 
 
+class HTMLGeneratorMixin():
+    """
+    Миксин для генерации html
+    """
+    def update_html_constructor(self, user_prompt):
+        
+        pass
+
+
+
+
 class ContentGeneratorMixin(
     TextGeneratorMixin,
     ImageGeneratorMixin,
+    HTMLGeneratorMixin,
 ):
     '''
        Миксин позволяющий генерировать контент 

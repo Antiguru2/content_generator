@@ -104,8 +104,8 @@ class PromptVersionViewSet(viewsets.ModelViewSet):
         """
         original_version = self.get_object()
         
-        # Генерируем номер новой версии
-        new_version_number = PromptVersion.get_next_version_number()
+        # Генерируем номер новой версии для того же промпта
+        new_version_number = PromptVersion.get_next_version_number_for_prompt(original_version.prompt)
         
         # Создаем описание для клона
         clone_description = f'Клон версии {original_version.version_number}: {original_version.description}'
@@ -116,6 +116,7 @@ class PromptVersionViewSet(viewsets.ModelViewSet):
         
         # Создаем новую версию с копией содержимого
         cloned_version = PromptVersion.objects.create(
+            prompt=original_version.prompt,
             version_number=new_version_number,
             description=clone_description,
             prompt_content=original_version.prompt_content,

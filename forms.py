@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from .models import PromptVersion
+from .models import Prompt, PromptVersion
 
 User = get_user_model()
 
@@ -15,8 +15,11 @@ class PromptVersionForm(forms.ModelForm):
     """
     class Meta:
         model = PromptVersion
-        fields = ['description', 'prompt_content', 'engineer_name']
+        fields = ['prompt', 'description', 'prompt_content', 'engineer_name']
         widgets = {
+            'prompt': forms.Select(attrs={
+                'class': 'admin-form-select',
+            }),
             'description': forms.Textarea(attrs={
                 'rows': 3,
                 'class': 'admin-form-textarea',
@@ -36,11 +39,13 @@ class PromptVersionForm(forms.ModelForm):
             }),
         }
         labels = {
+            'prompt': 'Тип промпта',
             'description': 'Описание версии',
             'prompt_content': 'Содержимое промпта',
             'engineer_name': 'Автор',
         }
         help_texts = {
+            'prompt': 'Выберите тип промпта, к которому относится данная версия.',
             'description': 'Обязательное поле. Опишите изменения в данной версии промпта.',
             'prompt_content': 'Текст промпта для генерации контента (максимум 50000 символов).',
             'engineer_name': 'Имя инженера, создавшего данную версию (заполняется автоматически).',
@@ -64,6 +69,10 @@ class PromptVersionForm(forms.ModelForm):
         
         # Делаем description обязательным полем
         self.fields['description'].required = True
+        self.fields['prompt'].required = True
+        
+        # Фильтруем промпты только активными
+        self.fields['prompt'].queryset = Prompt.objects.filter(is_active=True)
 
     def clean_prompt_content(self):
         """

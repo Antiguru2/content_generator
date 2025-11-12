@@ -355,7 +355,12 @@
                         name: 'set_some_params', 
                         label: 'Улучшить SEO и description', 
                         icon: '🚀'
-                    }
+                    },
+                    { 
+                        name: 'update_html_constructor', 
+                        label: 'Улучшить шаблон страницы', 
+                        icon: '🚀'
+                    }                    
                 ],
                 
                 // Инициализация
@@ -395,8 +400,8 @@
                     
                     try {
                         // Формируем URL с параметрами (используем новый унифицированный endpoint)
-                        const url = new URL('/content_generator/generate/', window.location.origin);
-                        url.searchParams.append('class_name', this.naturalKey.split('.')[1] || this.naturalKey);
+                        const url = new URL('/generate/', window.location.origin);
+                        url.searchParams.append('natural_key', this.naturalKey);
                         url.searchParams.append('model_id', this.modelId);
                         url.searchParams.append('action', actionName);
                         url.searchParams.append('async_mode', 'true');
