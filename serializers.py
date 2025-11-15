@@ -15,16 +15,12 @@ class PromptSerializer(serializers.ModelSerializer):
         model = Prompt
         fields = [
             'id',
-            'prompt_type',
             'name',
             'description',
-            'is_active',
-            'created_at',
-            'updated_at',
             'versions_count',
             'latest_version_id',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'versions_count', 'latest_version_id']
+        read_only_fields = ['id', 'versions_count', 'latest_version_id']
     
     def get_versions_count(self, obj):
         """Возвращает количество версий промпта."""

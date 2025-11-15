@@ -14,27 +14,15 @@ from content_generator.ai_interface_adapter import create_generation_task
 from content_generator.utils import get_prompt_for_action, ACTION_TO_PROMPT_TYPE
 
 
-# Словарь для маппинга действий на методы
-ACTION_METHODS = {
-    'set_seo_params': 'set_seo_params',
-    'set_description': 'set_description', 
-    'upgrade_name': 'upgrade_name',
-    'set_some_params': 'set_some_params',
-    'update_html_constructor': 'update_html_constructor',
-    # 'change_img': 'get_images_by_text',  # TODO: реализовать
-}
-
-
 @login_required()
 def generate(request):
     """
     Унифицированный API endpoint для генерации контента.
     
     Параметры:
-        - class_name (str): Имя класса модели (например, 'product', 'category')
-        - model_id (int): ID объекта модели
+        - generator_id (int): ID генератора контента (обязательный)
+        - model_id (int): ID объекта модели (обязательный)
         - action (str): Действие для выполнения (set_seo_params, set_description, etc.)
-        - prompt_version_id (int, optional): ID версии промпта (если не указан, используется последняя)
         - additional_prompt (str, optional): Дополнительный промпт от пользователя
         - async_mode (bool, optional): Выполнять асинхронно (по умолчанию False)
     
@@ -44,35 +32,51 @@ def generate(request):
     print('generate')
     try:
         # Получаем параметры
-        natural_key = request.GET.get('natural_key')
+        generator_id = request.GET.get('generator_id')
         model_id = request.GET.get('model_id')
         action = request.GET.get('action')
-        prompt_version_id = request.GET.get('prompt_version_id')
         additional_prompt = request.GET.get('additional_prompt', '')
         async_mode = request.GET.get('async_mode', 'false').lower() == 'true'
         
         # Валидация
-        if not natural_key or not model_id or not action:
+        if not generator_id or not model_id or not action:
             return JsonResponse({
                 'status': 'error',
-                'message': 'Отсутствуют обязательные параметры: class_name, model_id, action'
+                'message': 'Отсутствуют обязательные параметры: generator_id, model_id, action'
             }, status=400)
         
-        if action not in ACTION_METHODS:
-            return JsonResponse({
-                'status': 'error',
-                'message': f'Неизвестное действие: {action}'
-            }, status=400)
-        
-        # Получаем модель и объект
+        # Получаем генератор и извлекаем информацию о модели
         try:
-            Model = apps.get_model(natural_key)
-            model_instance = get_object_or_404(Model, id=model_id)
-        except LookupError:
+            from content_generator.models import ContentGenerator
+            generator = ContentGenerator.objects.get(id=generator_id)
+        except ContentGenerator.DoesNotExist:
             return JsonResponse({
                 'status': 'error',
-                'message': f'Модель {natural_key} не найдена'
+                'message': f'Генератор с ID {generator_id} не найден'
             }, status=404)
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Ошибка при получении генератора: {str(e)}'
+            }, status=500)
+        
+        # Проверяем наличие content_type у генератора
+        if not generator.content_type:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Генератор с ID {generator_id} не имеет настроенного типа контента'
+            }, status=400)
+        
+        # Получаем модель и объект через content_type
+        try:
+            Model = generator.content_type.model_class()
+            if not Model:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Модель для типа контента {generator.content_type} не найдена'
+                }, status=404)
+            
+            model_instance = get_object_or_404(Model, id=model_id)
         except Exception as e:
             return JsonResponse({
                 'status': 'error',
@@ -80,37 +84,26 @@ def generate(request):
             }, status=404)
         
         # Проверяем наличие метода у модели
-        method_name = ACTION_METHODS[action]
-        if not hasattr(model_instance, method_name):
+        if not hasattr(model_instance, action):
+            natural_key = f"{generator.content_type.app_label}.{generator.content_type.model}"
             return JsonResponse({
                 'status': 'error',
                 'message': f'Модель {natural_key} не поддерживает действие {action}'
             }, status=400)
         
-        # Получаем версию промпта
-        prompt_version = None
-        if prompt_version_id:
-            try:
-                prompt_version = PromptVersion.objects.get(id=prompt_version_id)
-            except PromptVersion.DoesNotExist:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f'Версия промпта с ID {prompt_version_id} не найдена'
-                }, status=404)
-        else:
-            # Используем промпт для конкретного действия
-            prompt_version = get_prompt_for_action(action)
-            if not prompt_version:
-                prompt_type = ACTION_TO_PROMPT_TYPE.get(action, 'unknown')
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f'Не найден активный промпт для действия "{action}" (тип: {prompt_type}). Создайте промпт и его версию перед генерацией.'
-                }, status=404)
+        # Получаем версию промпта для конкретного действия
+        prompt_version = get_prompt_for_action(generator, action)
+        if not prompt_version:
+            prompt_type = ACTION_TO_PROMPT_TYPE.get(action, 'unknown')
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Не найден активный промпт для действия "{action}" (тип: {prompt_type}). Создайте промпт и его версию перед генерацией.'
+            }, status=404)
         
         # Если асинхронный режим - создаем задачу через ai_interface
         if async_mode:
             try:
-                from ai_interface.models import AIProvider
+                from ai_interface.models import AIAgent
                 
                 # Получаем ContentType для модели
                 content_type = ContentType.objects.get_for_model(model_instance)
@@ -124,6 +117,9 @@ def generate(request):
                 if additional_prompt:
                     additional_data['additional_prompt'] = additional_prompt
                 
+                # Получаем агент из генератора (если не указан, используется AILENGO из настроек)
+                agent = generator.agent
+                
                 # Создаем задачу через адаптер
                 task = create_generation_task(
                     prompt_version=prompt_version,
@@ -131,15 +127,14 @@ def generate(request):
                     object_id=int(model_id),
                     action=action,
                     additional_data=additional_data if additional_data else None,
-                    provider=None,  # Используем AILENGO из настроек
+                    agent=agent,  # Используем агент из ContentGenerator или AILENGO из настроек
                     domain=domain
                 )
                 
                 return JsonResponse({
                     'status': 'ok',
                     'task_id': task.id,
-                    'prompt_version_id': prompt_version.id,
-                    'message': 'Задача создана и отправлена в AI-провайдер'
+                    'message': 'Задача создана и отправлена в AI-агент'
                 })
                 
             except ImportError:
@@ -181,10 +176,8 @@ def execute_generation_action(model_instance, action, additional_prompt=''):
         action: Название действия (set_seo_params, set_description, upgrade_name, set_some_params)
         additional_prompt: Дополнительный промпт от пользователя (используется для set_some_params)
     """
-    # Получаем имя метода из словаря маппинга действий
-    method_name = ACTION_METHODS[action]
     # Получаем метод модели через рефлексию
-    method = getattr(model_instance, method_name)
+    method = getattr(model_instance, action)
     
     # Для действий, поддерживающих дополнительный промпт (например, set_some_params)
     # передаем additional_prompt как аргумент
@@ -266,3 +259,74 @@ def change_img(request):
     # TODO: Реализовать функциональность выбора изображения
     # Пока что возвращаем заглушку
     return HttpResponse("Функция выбора изображения будет реализована позже")
+
+
+@login_required()
+def get_actions(request):
+    """
+    API endpoint для получения списка действий (actions) по generator_id.
+    
+    Параметры:
+        - generator_id (int): ID генератора контента
+    
+    Возвращает:
+        JSON: {
+            "status": "ok",
+            "actions": [
+                {"name": "set_seo_params", "label": "Сгенерировать SEO параметры", "icon": "🔍"},
+                ...
+            ]
+        } или {"status": "error", "message": "Генератор не найден"} с кодом 404
+    """
+    try:
+        generator_id = request.GET.get('generator_id')
+        
+        # Валидация
+        if not generator_id:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Отсутствует обязательный параметр: generator_id'
+            }, status=400)
+        
+        try:
+            generator_id = int(generator_id)
+        except (ValueError, TypeError):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'generator_id должен быть числом'
+            }, status=400)
+        
+        # Получаем генератор
+        from content_generator.models import ContentGenerator
+        try:
+            generator = ContentGenerator.objects.get(id=generator_id)
+        except ContentGenerator.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Генератор не найден'
+            }, status=404)
+        
+        # Получаем действия генератора
+        actions = generator.actions.all()
+        
+        # Формируем массив действий
+        actions_list = [
+            {
+                'name': action.name,
+                'label': action.label,
+                'icon': action.icon
+            }
+            for action in actions
+        ]
+        
+        return JsonResponse({
+            'status': 'ok',
+            'actions': actions_list
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e),
+            'traceback': traceback.format_exc()
+        }, status=500)

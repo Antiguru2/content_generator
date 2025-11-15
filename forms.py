@@ -1,7 +1,8 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 
-from .models import Prompt, PromptVersion
+from .models import Prompt, PromptVersion, ContentGenerator
 
 User = get_user_model()
 
@@ -70,9 +71,6 @@ class PromptVersionForm(forms.ModelForm):
         # Делаем description обязательным полем
         self.fields['description'].required = True
         self.fields['prompt'].required = True
-        
-        # Фильтруем промпты только активными
-        self.fields['prompt'].queryset = Prompt.objects.filter(is_active=True)
 
     def clean_prompt_content(self):
         """
@@ -94,4 +92,66 @@ class PromptVersionForm(forms.ModelForm):
         if not description:
             raise forms.ValidationError('Описание версии является обязательным полем.')
         return description
+
+
+# ========== ПОДСИСТЕМА GENERATION ==========
+
+class ContentGeneratorForm(forms.ModelForm):
+    """
+    Форма для создания и редактирования генераторов контента.
+    Включает валидацию уникальности content_type.
+    """
+    class Meta:
+        model = ContentGenerator
+        fields = ['content_type', 'agent', 'actions']
+        widgets = {
+            'content_type': forms.Select(attrs={
+                'class': 'admin-form-select',
+            }),
+            'agent': forms.Select(attrs={
+                'class': 'admin-form-select',
+            }),
+            'actions': forms.SelectMultiple(attrs={
+                'class': 'admin-form-select',
+            }),
+        }
+        labels = {
+            'content_type': 'Модель',
+            'agent': 'AI агент',
+            'actions': 'Действия',
+        }
+        help_texts = {
+            'content_type': 'Тип модели, для которой настроен генератор. Для каждой модели может быть только один генератор.',
+            'agent': 'AI-агент для генерации контента (опционально).',
+            'actions': 'Выберите доступные действия для генерации контента в данной модели.',
+        }
+
+    def clean_content_type(self):
+        """
+        Валидация уникальности content_type.
+        Проверяет, что для данного content_type еще не существует генератора.
+        """
+        content_type = self.cleaned_data.get('content_type')
+        if not content_type:
+            return content_type
+        
+        # Проверяем, существует ли уже генератор для данного content_type
+        existing_generator = ContentGenerator.objects.filter(content_type=content_type).first()
+        
+        # Если редактируем существующий объект, исключаем его из проверки
+        if self.instance and self.instance.pk:
+            if existing_generator and existing_generator.pk != self.instance.pk:
+                raise ValidationError(
+                    f'Генератор контента для модели "{content_type.model}" уже существует. '
+                    f'Для каждой модели может быть только один генератор.'
+                )
+        else:
+            # При создании нового объекта
+            if existing_generator:
+                raise ValidationError(
+                    f'Генератор контента для модели "{content_type.model}" уже существует. '
+                    f'Для каждой модели может быть только один генератор.'
+                )
+        
+        return content_type
 

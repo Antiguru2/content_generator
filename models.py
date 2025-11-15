@@ -1,17 +1,20 @@
 import requests
 import threading
-from datetime import datetime, timedelta
+
 from typing import Optional, Dict, Any
+from datetime import datetime, timedelta
 
 from django.db import models
-from django.conf import settings
 from django.apps import apps
+from django.conf import settings
+from django.db.models import Avg
+from django.utils import timezone
 from django.contrib.sites.models import Site
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.auth import get_user_model
-from django.utils import timezone
-from django.db.models import Avg
+
+from ai_interface.models import AIAgent
 
 User = get_user_model()
 
@@ -23,24 +26,6 @@ class Prompt(models.Model):
     Тип промпта для генерации контента.
     Определяет назначение промпта (SEO, описание товара, статья и т.д.).
     """
-    PROMPT_TYPE_CHOICES = (
-        ('product_description', 'Описание товара'),
-        ('article', 'Статья'),
-        ('seo', 'SEO контент'),
-        ('html_block', 'HTML блок'),
-        ('page_assembly', 'Сборка страницы'),
-        ('product_name', 'Название товара'),
-        ('complex_params', 'Комплексные параметры'),
-    )
-    
-    prompt_type = models.CharField(
-        max_length=50,
-        choices=PROMPT_TYPE_CHOICES,
-        unique=True,
-        db_index=True,
-        verbose_name='Тип промпта',
-        help_text='Тип промпта определяет его назначение'
-    )
     name = models.CharField(
         max_length=200,
         verbose_name='Название',
@@ -51,36 +36,13 @@ class Prompt(models.Model):
         verbose_name='Описание',
         help_text='Описание назначения промпта'
     )
-    is_active = models.BooleanField(
-        default=True,
-        db_index=True,
-        verbose_name='Активен',
-        help_text='Используется ли промпт по умолчанию'
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        db_index=True,
-        verbose_name='Дата создания',
-        help_text='Дата и время создания промпта'
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        verbose_name='Дата обновления',
-        help_text='Дата и время последнего обновления'
-    )
 
     class Meta:
-        db_table = 'prompts'
-        ordering = ['prompt_type']
         verbose_name = 'Промпт'
         verbose_name_plural = 'Промпты'
-        indexes = [
-            models.Index(fields=['prompt_type']),
-            models.Index(fields=['is_active']),
-        ]
 
     def __str__(self):
-        return f'{self.get_prompt_type_display()}: {self.name}'
+        return self.name
 
     def get_latest_version(self):
         """
@@ -145,7 +107,7 @@ class PromptVersion(models.Model):
         ]
 
     def __str__(self):
-        prompt_name = self.prompt.get_prompt_type_display() if self.prompt else 'Unknown'
+        prompt_name = self.prompt.name if self.prompt else 'Unknown'
         return f'{prompt_name} - Версия {self.version_number}: {self.description[:50]}'
 
     def get_generated_content_count(self):
@@ -240,6 +202,87 @@ class PromptVersion(models.Model):
 
 # ========== ПОДСИСТЕМА GENERATION ==========
 
+class Action(models.Model):
+    """
+    Действие для генерации контента.
+    
+    Хранит метаданные о действиях, которые можно выполнять для генерации контента.
+    Используется для настройки доступных действий в UI и привязки к генераторам контента.
+    """
+    name = models.CharField(
+        max_length=255,
+        verbose_name='Название',
+    )
+    label = models.CharField(
+        max_length=255,
+        verbose_name='Заголовок',
+    )
+    icon = models.CharField(
+        max_length=255,
+        verbose_name='Иконка',
+    )
+    system_prompt = models.ForeignKey(
+        Prompt,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='content_generators',
+        verbose_name='Системный промпт',
+    )
+    prompt = models.ForeignKey(
+        Prompt,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='generators',
+        verbose_name='Промпт',
+    )      
+
+    class Meta:
+        verbose_name = 'Действие'
+        verbose_name_plural = 'Действия'
+
+    def __str__(self):
+        return f'{self.label} ({self.name})'
+
+
+class ContentGenerator(models.Model):
+    """
+    Генератор контента для конкретной модели Django.
+    
+    Настраивает параметры генерации контента для определенного типа модели (Product, Category и т.д.).
+    Позволяет связать модель с промптами, действиями и AI-провайдером для гибкой настройки
+    генерации контента через админку Django без изменения кода.
+    
+    Ограничение: для каждой модели может быть только один генератор контента.
+    """
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        unique=True,
+        verbose_name='Модель',
+    ) 
+    actions = models.ManyToManyField(
+        Action,
+        verbose_name='Действия',
+    )
+    agent = models.ForeignKey(
+        AIAgent,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='AI агент',
+    )
+    
+    class Meta:
+        verbose_name = 'Генератор контента'
+        verbose_name_plural = 'Генераторы контента'
+        indexes = [
+            models.Index(fields=['content_type']),
+        ]
+
+    def __str__(self):
+        model_name = self.content_type.model if self.content_type else 'Unknown'
+        return f'Генератор для {model_name}'
+
+
 class GeneratedContent(models.Model):
     """
     Модель сгенерированного контента.
@@ -270,6 +313,7 @@ class GeneratedContent(models.Model):
         verbose_name='AI задача',
         help_text='Задача из ai_interface, связанная с генерацией'
     )
+    # ИЗМЕНЕНИТЬ НА SUPER_OBJECT
     content_type = models.ForeignKey(
         ContentType,
         on_delete=models.CASCADE,

@@ -5,6 +5,8 @@ from . import views
 urlpatterns = [
     # Новый унифицированный endpoint
     path('generate/', api.generate, name='generate'),
+    # API endpoint для получения actions по generator_id
+    path('get_actions/', api.get_actions, name='get_actions'),
     # Виджет для айфрейма
     path('content_generator_widget/', views.ContentGeneratorWidgetView.as_view(), name='content_generator_widget'),
     

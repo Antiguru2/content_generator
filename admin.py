@@ -3,8 +3,8 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.contrib import messages
 
-from .models import Prompt, PromptVersion
-from .forms import PromptVersionForm
+from .models import Prompt, PromptVersion, Action, ContentGenerator
+from .forms import PromptVersionForm, ContentGeneratorForm
 
 
 # ========== ПОДСИСТЕМА PROMPTS ==========
@@ -15,35 +15,20 @@ class PromptAdmin(admin.ModelAdmin):
     Административный интерфейс для управления типами промптов.
     """
     list_display = (
-        'prompt_type',
         'name',
-        'is_active',
         'get_versions_count',
-        'created_at',
     )
-    list_filter = (
-        'is_active',
-        'prompt_type',
-        'created_at',
-    )
+    list_filter = ()
     search_fields = (
         'name',
         'description',
-        'prompt_type',
     )
-    readonly_fields = (
-        'created_at',
-        'updated_at',
-    )
-    ordering = ('prompt_type',)
+    readonly_fields = ()
+    ordering = ('name',)
 
     fieldsets = (
         ('Основная информация', {
-            'fields': ('prompt_type', 'name', 'description', 'is_active')
-        }),
-        ('Метаданные', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
+            'fields': ('name', 'description')
         }),
     )
 
@@ -86,7 +71,6 @@ class PromptVersionAdmin(admin.ModelAdmin):
         'prompt_content',
         'engineer_name',
         'prompt__name',
-        'prompt__prompt_type',
     )
     readonly_fields = (
         'version_number',
@@ -144,7 +128,7 @@ class PromptVersionAdmin(admin.ModelAdmin):
                 obj.version_number = PromptVersion.get_next_version_number_for_prompt(obj.prompt)
             obj.engineer_name = form.cleaned_data.get('engineer_name', '')
             super().save_model(request, obj, form, change)
-            prompt_name = obj.prompt.get_prompt_type_display() if obj.prompt else 'Unknown'
+            prompt_name = obj.prompt.name if obj.prompt else 'Unknown'
             messages.success(
                 request,
                 f'Создана новая версия промпта "{prompt_name}" #{obj.version_number}: "{obj.description[:50]}"'
@@ -228,4 +212,146 @@ class PromptVersionAdmin(admin.ModelAdmin):
             ' | '.join(stats_parts)
         )
     get_statistics_display.short_description = 'Статистика'
+
+
+# ========== ПОДСИСТЕМА GENERATION ==========
+
+@admin.register(Action)
+class ActionAdmin(admin.ModelAdmin):
+    """
+    Административный интерфейс для управления действиями генерации контента.
+    
+    Запрещает создание новых действий и изменение поля name.
+    Действия создаются автоматически при миграции из settings.py.
+    """
+    list_display = (
+        'name',
+        'label',
+        'icon',
+        'get_prompts_display',
+    )
+    list_filter = (
+        'name',
+    )
+    search_fields = (
+        'name',
+        'label',
+    )
+    readonly_fields = (
+        'name',
+    )
+    ordering = ('name',)
+
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('name', 'label', 'icon')
+        }),
+        ('Промпты', {
+            'fields': ('system_prompt', 'prompt'),
+            'description': 'Настройте промпты для данного действия'
+        }),
+    )
+
+    def get_prompts_display(self, obj):
+        """
+        Отображает информацию о промптах в списке объектов.
+        """
+        prompts = []
+        if obj.system_prompt:
+            prompts.append(f'Системный: {obj.system_prompt.name}')
+        if obj.prompt:
+            prompts.append(f'Основной: {obj.prompt.name}')
+        
+        if prompts:
+            return format_html(
+                '<div style="font-size: 11px; color: #666;">{}</div>',
+                ' | '.join(prompts)
+            )
+        return '-'
+    get_prompts_display.short_description = 'Промпты'
+
+    def has_add_permission(self, request):
+        """
+        Запрещает создание новых действий.
+        Действия создаются автоматически при миграции из settings.py.
+        """
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """
+        Запрещает удаление действий.
+        """
+        return False
+
+
+@admin.register(ContentGenerator)
+class ContentGeneratorAdmin(admin.ModelAdmin):
+    """
+    Административный интерфейс для управления генераторами контента.
+    Включает валидацию уникальности content_type на уровне формы.
+    """
+    form = ContentGeneratorForm
+    list_display = (
+        'content_type',
+        'agent',
+        'get_actions_display',
+        'get_prompts_display',
+    )
+    list_filter = (
+        'content_type',
+        'agent',
+    )
+    search_fields = (
+        'content_type__model',
+        'content_type__app_label',
+    )
+    filter_horizontal = (
+        'actions',
+    )
+    ordering = ('content_type',)
+
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('content_type', 'agent')
+        }),
+        ('Действия', {
+            'fields': ('actions',),
+            'description': 'Выберите доступные действия для генерации контента в данной модели. Промпты настраиваются для каждого действия отдельно.'
+        }),
+    )
+
+    def get_actions_display(self, obj):
+        """
+        Отображает список действий в списке объектов.
+        """
+        if obj.actions.exists():
+            actions_list = [f"{action.icon} {action.label}" for action in obj.actions.all()]
+            return format_html(
+                '<div style="font-size: 11px;">{}</div>',
+                ' | '.join(actions_list)
+            )
+        return '-'
+    get_actions_display.short_description = 'Действия'
+
+    def get_prompts_display(self, obj):
+        """
+        Отображает информацию о промптах из связанных действий.
+        """
+        prompts_info = []
+        for action in obj.actions.all():
+            action_prompts = []
+            if action.system_prompt:
+                action_prompts.append(f'С: {action.system_prompt.name}')
+            if action.prompt:
+                action_prompts.append(f'О: {action.prompt.name}')
+            if action_prompts:
+                prompts_info.append(f'{action.label} ({", ".join(action_prompts)})')
+        
+        if prompts_info:
+            return format_html(
+                '<div style="font-size: 11px; color: #666;">{}</div>',
+                ' | '.join(prompts_info)
+            )
+        return '-'
+    get_prompts_display.short_description = 'Промпты (из действий)'
 

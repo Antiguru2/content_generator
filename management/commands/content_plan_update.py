@@ -7,7 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from content_generator.models import ContentPlan, Topic, ContentGeneratorLog
-from ai_interface.models import AIProvider, AITask
+from ai_interface.models import AIAgent, AITask
 
 
 class Command(BaseCommand):

@@ -19,10 +19,11 @@ from content_generator.utils import process_generation_result as utils_process_r
 class AITaskMock:
     """Мок для AITask из ai_interface."""
     
-    def __init__(self, id=1, status='SUCCESS', data=None, result=None):
+    def __init__(self, id=1, status='SUCCESS', context_data=None, payload=None, result=None):
         self.id = id
         self.status = status
-        self.data = data or {}
+        self.context_data = context_data or {}
+        self.payload = payload or {}
         self.result = result or {}
 
 
@@ -71,10 +72,14 @@ class AIInterfaceIntegrationTest(TestCase):
         
         # Проверяем параметры вызова
         call_args = mock_aitask.create_and_dispatch.call_args
-        self.assertEqual(call_args[1]['agent_name'], 'content_generator_set_seo_params')
-        self.assertIn('prompt_version_id', call_args[1]['data'])
-        self.assertEqual(call_args[1]['data']['prompt_version_id'], self.prompt_version.id)
-        self.assertEqual(call_args[1]['data']['prompt_content'], self.prompt_version.prompt_content)
+        self.assertEqual(call_args[1]['endpoint'], 'content_generator_set_seo_params')
+        self.assertIn('context_data', call_args[1])
+        self.assertIn('payload', call_args[1])
+        self.assertIn('prompt_version_id', call_args[1]['context_data'])
+        self.assertEqual(call_args[1]['context_data']['prompt_version_id'], self.prompt_version.id)
+        self.assertEqual(call_args[1]['context_data']['prompt_content'], self.prompt_version.prompt_content)
+        self.assertIn('prompt', call_args[1]['payload'])
+        self.assertEqual(call_args[1]['payload']['prompt'], self.prompt_version.prompt_content)
 
     def test_process_generation_result_success(self):
         """Тест обработки успешного результата генерации."""
@@ -82,7 +87,7 @@ class AIInterfaceIntegrationTest(TestCase):
         ai_task = AITaskMock(
             id=1,
             status='SUCCESS',
-            data={
+            context_data={
                 'prompt_version_id': self.prompt_version.id,
                 'class_name': 'product',
                 'model_id': 1
@@ -110,7 +115,7 @@ class AIInterfaceIntegrationTest(TestCase):
         ai_task = AITaskMock(
             id=1,
             status='FAILURE',
-            data={
+            context_data={
                 'prompt_version_id': self.prompt_version.id,
                 'class_name': 'product',
                 'model_id': 1
@@ -131,7 +136,7 @@ class AIInterfaceIntegrationTest(TestCase):
         ai_task = AITaskMock(
             id=1,
             status='SUCCESS',
-            data={
+            context_data={
                 'class_name': 'product',
                 'model_id': 1
             },
@@ -150,7 +155,7 @@ class AIInterfaceIntegrationTest(TestCase):
         ai_task = AITaskMock(
             id=1,
             status='SUCCESS',
-            data={
+            context_data={
                 'prompt_version_id': 99999,  # Несуществующий ID
                 'class_name': 'product',
                 'model_id': 1
@@ -197,7 +202,7 @@ class AIInterfaceIntegrationTest(TestCase):
         ai_task = AITaskMock(
             id=1,
             status='SUCCESS',
-            data={
+            context_data={
                 'prompt_version_id': self.prompt_version.id,
                 'class_name': 'product',
                 'model_id': 1
@@ -262,7 +267,7 @@ class FullGenerationCycleTest(TestCase):
         ai_task = AITaskMock(
             id=1,
             status='SUCCESS',
-            data={
+            context_data={
                 'prompt_version_id': self.prompt_version.id,
                 'class_name': 'product',
                 'model_id': 1
@@ -298,7 +303,7 @@ class FullGenerationCycleTest(TestCase):
         ai_task1 = AITaskMock(
             id=1,
             status='SUCCESS',
-            data={
+            context_data={
                 'prompt_version_id': self.prompt_version.id,
                 'class_name': 'product',
                 'model_id': 1
@@ -312,7 +317,7 @@ class FullGenerationCycleTest(TestCase):
         ai_task2 = AITaskMock(
             id=2,
             status='SUCCESS',
-            data={
+            context_data={
                 'prompt_version_id': prompt_version2.id,
                 'class_name': 'product',
                 'model_id': 2

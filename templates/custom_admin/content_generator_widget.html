@@ -239,15 +239,31 @@
             </p>
         </div>
         
+        <!-- Проверка на наличие generator_id -->
+        <template x-if="!generatorId">
+            <div class="status-message warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>⚠️ Генератор контента не настроен. Необходимо настроить генератор для данной модели.</span>
+            </div>
+        </template>
+        
         <!-- Проверка на существование объекта -->
-        <template x-if="modelId === 'None' || !modelId">
+        <template x-if="generatorId && (modelId === 'None' || !modelId)">
             <div class="status-message warning">
                 <i class="fas fa-exclamation-triangle"></i>
                 <span>⚠️ Объект не создан. Сохраните объект перед использованием генерации контента.</span>
             </div>
         </template>
         
-        <template x-if="modelId !== 'None' && modelId">
+        <!-- Состояние загрузки actions -->
+        <template x-if="generatorId && actionsLoading">
+            <div class="status-message info">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Загрузка доступных действий...</span>
+            </div>
+        </template>
+        
+        <template x-if="generatorId && modelId !== 'None' && modelId && !actionsLoading">
             <div>
                 <!-- Поле для дополнительного промпта -->
                 <div class="prompt-section">
@@ -317,68 +333,108 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('contentGeneratorWidget', () => ({
-                // Параметры берём из query string, контекст не используем
-                naturalKey: '',
+                // Параметры берём из query string
+                generatorId: '',
                 modelId: '',
                 
                 // Состояние
                 open: false,
                 loading: false,
+                actionsLoading: false,
                 currentAction: null,
                 additionalPrompt: '',
                 statusMessage: '',
                 statusType: 'info', // info, success, error
                 
-                // Доступные действия
-                actions: [
-                    { 
-                        name: 'set_seo_params', 
-                        label: 'SEO параметры', 
-                        icon: '🔍'
-                    },
-                    { 
-                        name: 'set_description', 
-                        label: 'Полное описание', 
-                        icon: '📝'
-                    },
-                    { 
-                        name: 'upgrade_name', 
-                        label: 'Улучшить название', 
-                        icon: '✨'
-                    },
-                    { 
-                        name: 'change_img', 
-                        label: 'Выбрать картинку', 
-                        icon: '🖼️'
-                    },
-                    { 
-                        name: 'set_some_params', 
-                        label: 'Улучшить SEO и description', 
-                        icon: '🚀'
-                    },
-                    { 
-                        name: 'update_html_constructor', 
-                        label: 'Улучшить шаблон страницы', 
-                        icon: '🚀'
-                    }                    
-                ],
+                // Доступные действия (загружаются динамически)
+                actions: [],
                 
                 // Инициализация
-                init() {
+                async init() {
                     // Считываем параметры из URL
                     const params = new URLSearchParams(window.location.search);
 
-                    this.naturalKey = params.get('natural_key');
-                    this.modelId = params.get('obj_id') 
+                    this.generatorId = params.get('generator_id');
+                    this.modelId = params.get('obj_id');
 
                     console.log('Content Generator Widget initialized');
-                    console.log('Natural Key:', this.naturalKey);
+                    console.log('Generator ID:', this.generatorId);
                     console.log('Model ID:', this.modelId);
+                    
+                    // Проверяем наличие generator_id
+                    if (!this.generatorId) {
+                        console.warn('Generator ID not found in URL parameters');
+                        // Показываем виджет с сообщением об ошибке
+                        setTimeout(() => {
+                            this.open = true;
+                        }, 100);
+                        return;
+                    }
+                    
+                    // Загружаем actions для данного генератора
+                    await this.loadActions();
                     
                     // Показываем виджет с анимацией
                     setTimeout(() => {
                         this.open = true;
                     }, 100);
+                },
+                
+                // Загрузка действий из API
+                async loadActions() {
+                    if (!this.generatorId) {
+                        console.error('Cannot load actions: generator_id is missing');
+                        return;
+                    }
+                    
+                    this.actionsLoading = true;
+                    
+                    try {
+                        const url = new URL('/get_actions/', window.location.origin);
+                        url.searchParams.append('generator_id', this.generatorId);
+                        
+                        console.log('Loading actions from:', url.toString());
+                        
+                        const response = await fetch(url.toString(), {
+                            method: 'GET',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'same-origin'
+                        });
+                        
+                        console.log('Actions response status:', response.status);
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            if (response.status === 404) {
+                                throw new Error('Генератор не найден. Пожалуйста, настройте генератор для данной модели.');
+                            }
+                            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        const data = await response.json();
+                        console.log('Actions response data:', data);
+                        
+                        if (data.status === 'error') {
+                            throw new Error(data.message || 'Ошибка при загрузке действий');
+                        }
+                        
+                        if (data.actions && Array.isArray(data.actions)) {
+                            this.actions = data.actions;
+                            console.log('Actions loaded:', this.actions);
+                        } else {
+                            throw new Error('Неверный формат ответа: ожидался массив actions');
+                        }
+                        
+                    } catch (error) {
+                        console.error('Error loading actions:', error);
+                        this.statusMessage = `Ошибка загрузки действий: ${error.message}`;
+                        this.statusType = 'error';
+                        this.actions = [];
+                    } finally {
+                        this.actionsLoading = false;
+                    }
                 },
                 
                 // Выполнение действия
@@ -401,7 +457,7 @@
                     try {
                         // Формируем URL с параметрами (используем новый унифицированный endpoint)
                         const url = new URL('/generate/', window.location.origin);
-                        url.searchParams.append('natural_key', this.naturalKey);
+                        url.searchParams.append('generator_id', this.generatorId);
                         url.searchParams.append('model_id', this.modelId);
                         url.searchParams.append('action', actionName);
                         url.searchParams.append('async_mode', 'true');

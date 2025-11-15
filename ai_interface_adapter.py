@@ -10,7 +10,7 @@ from django.apps import apps
 from django.contrib.sites.models import Site
 from django.contrib.contenttypes.models import ContentType
 
-from ai_interface.models import AITask, AIProvider
+from ai_interface.models import AITask, AIAgent
 from content_generator.models import PromptVersion, GeneratedContent
 
 
@@ -20,7 +20,7 @@ def create_generation_task(
     object_id: int,
     action: str,
     additional_data: Optional[Dict[str, Any]] = None,
-    provider: Optional[AIProvider] = None,
+    agent: Optional[AIAgent] = None,
     domain: Optional[str] = None
 ) -> AITask:
     """
@@ -32,14 +32,14 @@ def create_generation_task(
         object_id: ID связанного объекта
         action: Действие для выполнения (set_seo_params, set_description, etc.)
         additional_data: Дополнительные данные для генерации (например, additional_prompt)
-        provider: AI-провайдер (если None, используется AILENGO из настроек)
+        agent: AI-агент (обязателен)
         domain: Домен для построения webhook URL (если None, берется из Site)
     
     Returns:
         AITask: Созданная задача
     
     Raises:
-        Exception: При ошибках создания задачи или вызова провайдера
+        Exception: При ошибках создания задачи или вызова агента
     """
     # Получаем домен, если не указан
     if domain is None:
@@ -52,7 +52,8 @@ def create_generation_task(
             domain = getattr(settings, 'SITE_DOMAIN', 'localhost')
     
     # Формируем данные для задачи
-    task_data = {
+    # context_data - данные для обработки в процессорах
+    context_data = {
         'prompt_version_id': prompt_version.id,
         'class_name': content_type.model,
         'model_id': object_id,
@@ -62,17 +63,26 @@ def create_generation_task(
     
     # Добавляем дополнительные данные, если есть
     if additional_data:
-        task_data.update(additional_data)
+        context_data.update(additional_data)
     
-    # Определяем имя агента на основе действия
-    agent_name = f'content_generator_{action}'
+    # payload - данные для отправки AI-агенту
+    payload = {
+        'prompt': prompt_version.prompt_content,
+    }
+    
+    # Если есть additional_prompt, добавляем его в payload
+    if additional_data and 'additional_prompt' in additional_data:
+        payload['additional_prompt'] = additional_data['additional_prompt']
+    
+    # Определяем эндпоинт на основе действия
+    endpoint = f'content_generator_{action}'
     
     # Создаем и отправляем задачу
     task = AITask.create_and_dispatch(
-        agent_name=agent_name,
-        data=task_data,
-        provider=provider,
-        domain=domain
+        endpoint=endpoint,
+        payload=payload,
+        context_data=context_data,
+        agent=agent
     )
     
     return task
@@ -93,7 +103,7 @@ def process_generation_result(ai_task: AITask) -> Optional[GeneratedContent]:
     """
     try:
         # Извлекаем данные из задачи
-        task_data = ai_task.data or {}
+        task_data = ai_task.context_data or {}
         result_data = ai_task.result or {}
         
         # Получаем prompt_version_id из данных задачи

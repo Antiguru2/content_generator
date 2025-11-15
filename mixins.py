@@ -187,48 +187,85 @@ class ContentGeneratorMixin(
     @property
     @display(description='Генерация контента (AI)')
     def content_generator_widget_iframe(self):
-        """Возвращает айфрейм с виджетом генерации контента.
+        """Возвращает айфрейм с виджетом генерации контента или сообщение о необходимости настройки.
 
-        Ожидаемые параметры темплейта: natural_key, obj_id
+        Ищет ContentGenerator для текущей модели по content_type.
+        Если генератор найден - формирует URL с generator_id.
+        Если генератор не найден - возвращает HTML с сообщением и ссылкой на создание.
         """
-        natural_key = f"{self._meta.app_label}.{self._meta.model_name}"
-        obj_id = self.id
-        iframe_src = f"/content_generator_widget/?natural_key={natural_key}&obj_id={obj_id}"
-        iframe_html = (
-            "<div id='cg-widget-container' style='width: 100%; max-width: none;'>"
-            f"<iframe id='cg-widget-iframe' src='{iframe_src}' "
-            "style=\"display:block; width: 100%; height: 80vh; min-height: 560px; "
-            "border: 0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); background: #fff;\" "
-            "loading='lazy' referrerpolicy='same-origin' allow='clipboard-read; clipboard-write' allowfullscreen></iframe>"
-            "</div>"
-            "<script>(function(){"
-            "try {"
-            "  var c = document.getElementById('cg-widget-container');"
-            "  if(!c) return;"
-            "  var flex = c.closest('.flex-container');"
-            "  if (flex) {"
-            "    var readonly = flex.querySelector('div.readonly');"
-            "    if (readonly) {"
-            "      readonly.style.flex = '1 1 100%';"
-            "      readonly.style.width = '100%';"
-            "      readonly.style.maxWidth = '100%';"
-            "      readonly.style.paddingRight = '0';"
-            "    }"
-            "  }"
-            "  var iframe = document.getElementById('cg-widget-iframe');"
-            "  function fitHeight(){"
-            "    if(!iframe) return;"
-            "    var r = iframe.getBoundingClientRect();"
-            "    var space = window.innerHeight - r.top - 24;"
-            "    var h = Math.max(560, space);"
-            "    iframe.style.height = h + 'px';"
-            "  }"
-            "  fitHeight();"
-            "  window.addEventListener('resize', fitHeight);"
-            "} catch(e) { /* no-op */ }"
-            "})();</script>"
-        )
-        return mark_safe(iframe_html)
+        from django.contrib.contenttypes.models import ContentType
+        from django.urls import reverse
+        from content_generator.models import ContentGenerator
+        from django.core.exceptions import ObjectDoesNotExist
+        
+        # Получаем ContentType для текущей модели
+        content_type = ContentType.objects.get_for_model(self)
+        
+        # Ищем ContentGenerator по content_type (теперь гарантирована уникальность)
+        try:
+            generator = ContentGenerator.objects.get(content_type=content_type)
+        except ObjectDoesNotExist:
+            generator = None
+        
+        if generator:
+            # Если генератор найден - формируем URL с generator_id
+            iframe_src = f"/content_generator_widget/?generator_id={generator.id}&obj_id={self.id}"
+            iframe_html = (
+                "<div id='cg-widget-container' style='width: 100%; max-width: none;'>"
+                f"<iframe id='cg-widget-iframe' src='{iframe_src}' "
+                "style=\"display:block; width: 100%; height: 80vh; min-height: 560px; "
+                "border: 0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); background: #fff;\" "
+                "loading='lazy' referrerpolicy='same-origin' allow='clipboard-read; clipboard-write' allowfullscreen></iframe>"
+                "</div>"
+                "<script>(function(){"
+                "try {"
+                "  var c = document.getElementById('cg-widget-container');"
+                "  if(!c) return;"
+                "  var flex = c.closest('.flex-container');"
+                "  if (flex) {"
+                "    var readonly = flex.querySelector('div.readonly');"
+                "    if (readonly) {"
+                "      readonly.style.flex = '1 1 100%';"
+                "      readonly.style.width = '100%';"
+                "      readonly.style.maxWidth = '100%';"
+                "      readonly.style.paddingRight = '0';"
+                "    }"
+                "  }"
+                "  var iframe = document.getElementById('cg-widget-iframe');"
+                "  function fitHeight(){"
+                "    if(!iframe) return;"
+                "    var r = iframe.getBoundingClientRect();"
+                "    var space = window.innerHeight - r.top - 24;"
+                "    var h = Math.max(560, space);"
+                "    iframe.style.height = h + 'px';"
+                "  }"
+                "  fitHeight();"
+                "  window.addEventListener('resize', fitHeight);"
+                "} catch(e) { /* no-op */ }"
+                "})();</script>"
+            )
+            return mark_safe(iframe_html)
+        else:
+            # Если генератор не найден - возвращаем HTML с сообщением и ссылкой на создание
+            create_url = reverse('admin:content_generator_contentgenerator_add')
+            create_url_with_params = f"{create_url}?content_type={content_type.id}"
+            
+            message_html = (
+                "<div style='padding: 20px; background: #fff3cd; border: 1px solid #ffc107; "
+                "border-radius: 8px; margin: 20px 0;'>"
+                "<h3 style='margin-top: 0; color: #856404;'>⚠️ Генератор контента не настроен</h3>"
+                "<p style='color: #856404; margin-bottom: 15px;'>"
+                f"Для модели <strong>{content_type.model}</strong> необходимо настроить генератор контента. "
+                "Нажмите на кнопку ниже, чтобы создать генератор с предустановленным типом модели."
+                "</p>"
+                f"<a href='{create_url_with_params}' "
+                "style='display: inline-block; padding: 10px 20px; background: #007bff; color: white; "
+                "text-decoration: none; border-radius: 4px; font-weight: bold;'>"
+                "Создать генератор контента"
+                "</a>"
+                "</div>"
+            )
+            return mark_safe(message_html)
     
     @property
     @display(description='Вы можете ввести описание своими словами')

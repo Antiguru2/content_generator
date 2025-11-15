@@ -292,11 +292,7 @@ def get_prompt_for_action(action: str) -> Optional['PromptVersion']:
     Returns:
         PromptVersion или None, если промпт не найден
     """
-    from content_generator.models import Prompt, PromptVersion
-    
-    prompt_type = ACTION_TO_PROMPT_TYPE.get(action)
-    if not prompt_type:
-        return None
+    from content_generator.models import Prompt
     
     try:
         prompt = Prompt.objects.filter(
